@@ -1,4 +1,4 @@
-
+﻿
 #include <locale.h>
 
 #include <winsdkver.h>
@@ -27,12 +27,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	::setlocale(LC_ALL, ".utf8");
 
 	int iRet = 0;
-	CMainWindow sWindow;
-	bool bRet = sWindow.Create(hInstance);
+	CMainWindow mainWindow;
+	bool bRet = mainWindow.Create(hInstance);
 	if (bRet)
 	{
-		::ShowWindow(sWindow.GetHwnd(), nCmdShow);
-		iRet = sWindow.MessageLoop();
+		::ShowWindow(mainWindow.GetHwnd(), nCmdShow);
+		iRet = mainWindow.MessageLoop();
 	}
 
 	return iRet;

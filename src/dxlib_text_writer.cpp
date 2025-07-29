@@ -1,4 +1,4 @@
-
+﻿
 
 #include "dxlib_text_writer.h"
 
