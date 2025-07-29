@@ -63,6 +63,12 @@
     <ClCompile Include="..\..\src\mf_media_player.cpp">
       <Filter>Source File</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\dxlib_spine_cpp\spine_player.cpp">
+      <Filter>Source File\dxlib_spine</Filter>
+    </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <Filter>Source File</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\main_window.h">
@@ -114,6 +120,12 @@
       <Filter>Header File</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\mf_media_player.h">
+      <Filter>Header File</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\dxlib_spine_cpp\spine_player.h">
+      <Filter>Header File\dxlib_spine</Filter>
+    </ClInclude>
+    <ClInclude Include="pch.h">
       <Filter>Header File</Filter>
     </ClInclude>
   </ItemGroup>

@@ -105,6 +105,10 @@
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)src\deps\spine-cpp-4.1\include;$(SolutionDir)src\deps\dxlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/d1trimfile:"$(SolutionDir)\" %(AdditionalOptions)</AdditionalOptions>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -121,6 +125,10 @@
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)src\deps\spine-cpp-4.1\include;$(SolutionDir)src\deps\dxlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/d1trimfile:"$(SolutionDir)\" %(AdditionalOptions)</AdditionalOptions>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -128,6 +136,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)src\deps;$(SolutionDir)src\deps\dxlib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>/pdbaltpath:%_PDB% %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -136,6 +145,7 @@
     <ClCompile Include="..\..\src\dxlib_spine_cpp\dxlib_spine.cpp" />
     <ClCompile Include="..\..\src\dxlib_spine_cpp\dxlib_spine_player.cpp" />
     <ClCompile Include="..\..\src\dxlib_spine_cpp\spine_loader.cpp" />
+    <ClCompile Include="..\..\src\dxlib_spine_cpp\spine_player.cpp" />
     <ClCompile Include="..\..\src\dxlib_text_writer.cpp" />
     <ClCompile Include="..\..\src\karinchan.cpp" />
     <ClCompile Include="..\..\src\karinchan_scene_player.cpp" />
@@ -145,6 +155,10 @@
     <ClCompile Include="..\..\src\win_dialogue.cpp" />
     <ClCompile Include="..\..\src\win_filesystem.cpp" />
     <ClCompile Include="..\..\src\win_text.cpp" />
+    <ClCompile Include="pch.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\adv.h" />
@@ -154,6 +168,7 @@
     <ClInclude Include="..\..\src\dxlib_spine_cpp\dxlib_spine.h" />
     <ClInclude Include="..\..\src\dxlib_spine_cpp\dxlib_spine_player.h" />
     <ClInclude Include="..\..\src\dxlib_spine_cpp\spine_loader.h" />
+    <ClInclude Include="..\..\src\dxlib_spine_cpp\spine_player.h" />
     <ClInclude Include="..\..\src\dxlib_text_writer.h" />
     <ClInclude Include="..\..\src\karinchan.h" />
     <ClInclude Include="..\..\src\karinchan_scene_player.h" />
@@ -164,6 +179,7 @@
     <ClInclude Include="..\..\src\win_dialogue.h" />
     <ClInclude Include="..\..\src\win_filesystem.h" />
     <ClInclude Include="..\..\src\win_text.h" />
+    <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="..\dpiAwareness.manifest" />
