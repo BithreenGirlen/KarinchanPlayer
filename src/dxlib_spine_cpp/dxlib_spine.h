@@ -1,7 +1,7 @@
 ﻿#ifndef DXLIB_SPINE_H_
 #define DXLIB_SPINE_H_
 
-/* avoid conflict between <MathUtils.h> and <Windows.h> */
+/*avoid conflict between <MathUtils.h> and <Windows.h>*/
 #undef min
 #undef max
 #include <spine/spine.h>
@@ -17,31 +17,32 @@ public:
 
 	spine::Skeleton* skeleton = nullptr;
 	spine::AnimationState* animationState = nullptr;
-	float timeScale = 1.f;
+
+	/// @brief Whether alpha is premultiplied or not. For Spine 4.0 and later, this property is exported with atlas file,
+	///	       but for Spine 3.8, should be configured based on other means.
+	bool isAlphaPremultiplied = true; 
+	bool isToForceBlendModeNormal = false;
 
 	void Update(float fDelta);
-	void Draw(float fDepth = 0.f);
+	void Draw();
 
-	void SetPma(bool bPremultiplied) { m_bAlphaPremultiplied = bPremultiplied; }
-	bool GetPma() const { return m_bAlphaPremultiplied; }
-
-	void SetForceBlendModeNormal(bool bForced) { m_bForceBlendModeNormal = bForced; }
-	bool GetForceBlendModeNormal() const { return m_bForceBlendModeNormal; }
-
+	/// @brief Set slots to be excluded from rendering
 	void SetLeaveOutList(spine::Vector<spine::String> &list);
+	void SetLeaveOutCallback(bool (*pFunc)(const char*, size_t)) { m_pLeaveOutCallback = pFunc; }
+
+	DxLib::FLOAT4 GetBoundingBox() const;
 private:
-	bool m_bHasOwnAnimationStateData = false;
-	bool m_bAlphaPremultiplied = true;
-	bool m_bForceBlendModeNormal = false;
+	bool m_hasOwnAnimationStateData = false;
 
 	spine::Vector<float> m_worldVertices;
 	spine::Vector<DxLib::VERTEX2D> m_dxLibVertices;
-	spine::Vector<unsigned short> m_dxLibIndices;
+
 	spine::Vector<unsigned short> m_quadIndices;
 
 	spine::SkeletonClipping m_clipper;
 
 	spine::Vector<spine::String> m_leaveOutList;
+	bool (*m_pLeaveOutCallback)(const char*, size_t) = nullptr;
 
 	bool IsToBeLeftOut(const spine::String& slotName);
 };
