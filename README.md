@@ -28,12 +28,13 @@ The scene will be set up based on the description of `script.txt` using resource
 
 | Input | Function |
 | --- | --- |
-| Mouse wheel | Scale up/down. Combinating `Ctrl` to retain window size. |
-| Left button + mouse wheel | Speed up/down the animation. |
-| Left button drag | Move view-point. |
-| Middle button | Reset scale, speed, and view-point to default. |
-| Right button + mouse wheel | Fast forward/rewind the text. |
-| Right button + middle button | Show/hide windows's frame and title. |
+| Wheel scroll | Scale up/down. Combinating `Ctrl` to retain window size. |
+| L-pressed + mouse wheel | Speed up/down the animation. |
+| L-drag | Move view-point. |
+| M-click | Reset scale, speed, and view-point to default. |
+| R-click | Show context menu. |
+| R-pressed + wheel scroll | Fast-forward/rewind the text. |
+| R-pressed + M-click | Show/hide windows's frame and title. |
 
 ## Keyboard functions
 
@@ -49,7 +50,7 @@ The scene will be set up based on the description of `script.txt` using resource
 
 <details><summary>Navigation example</summary>
  
-- When `0069_03h` is opened, `∨` key starts playing `0071_03h`, and `∧` key `0068_03h`.
+- When `0069_03h` is opened, `∨` key opens `0071_03h`, and `∧` key `0068_03h`.
 
 <pre>
 ...
@@ -72,7 +73,7 @@ The scene will be set up based on the description of `script.txt` using resource
 ## Build
 
 1. Open `src/deps` folder with Visual Studio 2022.
-  - CMake configuration downloads external libraries.
+    - CMake configuration downloads external libraries.
 2. Install Spine generic runtime both for `x64-Debug` and for `x64-Release`.
 3. Open `KarinchanPlayer.sln`.
 4. Select `Build Solution` on menu items.
