@@ -363,5 +363,6 @@ MigrationBackup/
 FodyWeavers.xsd
 
 # External libraries
-/src/deps/dxlib
-/src/deps/spine-cpp-4.1
+**/deps/dxlib
+**/deps/spine-cpp-4.1/*
+!**/deps/spine-cpp-4.1/CMakeLists.txt

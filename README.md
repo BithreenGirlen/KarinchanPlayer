@@ -71,8 +71,8 @@ The scene will be set up based on the description of `script.txt` using resource
 
 ## Build
 
-1. Run `src/deps/CMakeLists.txt` to obtain the external libraries. 
-2. Build `spine-cpp.lib` with official [CMakeLists.txt](https://github.com/EsotericSoftware/spine-runtimes/blob/4.1/spine-cpp/CMakeLists.txt).
-3. Move built static library files to `src/deps/spine-cpp-4.1/lib`.
-4. Open `KarinchanPlayer.sln` with Visual Studio 2022.
-5. Select `Build Solution` on menu items.
+1. Open `src/deps` folder with Visual Studio 2022.
+  - CMake configuration downloads external libraries.
+2. Install Spine generic runtime both for `x64-Debug` and for `x64-Release`.
+3. Open `KarinchanPlayer.sln`.
+4. Select `Build Solution` on menu items.
