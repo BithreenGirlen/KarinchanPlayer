@@ -145,6 +145,8 @@ LRESULT CMainWindow::HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
 		return OnLButtonDown(wParam, lParam);
 	case WM_LBUTTONUP:
 		return OnLButtonUp(wParam, lParam);
+	case WM_RBUTTONUP:
+		return OnRButtonUp(wParam, lParam);
 	case WM_MBUTTONUP:
 		return OnMButtonUp(wParam, lParam);
 	default:
@@ -190,7 +192,7 @@ LRESULT CMainWindow::OnPaint()
 	PAINTSTRUCT ps;
 	HDC hdc = ::BeginPaint(m_hWnd, &ps);
 
-	if (m_bPlayReady && m_pKarinchanScenePlayer.get() != nullptr)
+	if (m_pKarinchanScenePlayer.get() != nullptr && m_pKarinchanScenePlayer->HasScenarioData())
 	{
 		m_pKarinchanScenePlayer->Update();
 
@@ -296,6 +298,12 @@ LRESULT CMainWindow::OnCommand(WPARAM wParam, LPARAM lParam)
 		case Menu::kFontSetting:
 
 			break;
+		default:
+			if (wmId >= Menu::kLabelStartIndex)
+			{
+				JumpToLabel(static_cast<size_t>(wmId - Menu::kLabelStartIndex));
+			}
+			break;
 		}
 	}
 	else
@@ -312,20 +320,20 @@ LRESULT CMainWindow::OnMouseMove(WPARAM wParam, LPARAM lParam)
 	WORD usKey = LOWORD(wParam);
 	if (usKey == MK_LBUTTON)
 	{
-		if (m_bLeftCombinated)return 0;
+		if (m_wasLeftCombinated)return 0;
 
 		POINT pt{};
 		::GetCursorPos(&pt);
 		int iX = m_cursorPos.x - pt.x;
 		int iY = m_cursorPos.y - pt.y;
 
-		if (m_pKarinchanScenePlayer.get() != nullptr)
+		if (m_pKarinchanScenePlayer.get() != nullptr && m_hasLeftBeenDragged)
 		{
 			m_pKarinchanScenePlayer->MoveViewPoint(iX, iY);
 		}
 
 		m_cursorPos = pt;
-		m_bLeftDragged = true;
+		m_hasLeftBeenDragged = true;
 	}
 
 	return 0;
@@ -349,6 +357,8 @@ LRESULT CMainWindow::OnMouseWheel(WPARAM wParam, LPARAM lParam)
 		{
 			m_pKarinchanScenePlayer->ShiftScene(iScroll > 0);
 		}
+
+		m_wasRightCombinated = true;
 	}
 	else
 	{
@@ -362,7 +372,6 @@ LRESULT CMainWindow::OnMouseWheel(WPARAM wParam, LPARAM lParam)
 		}
 	}
 
-
 	return 0;
 }
 /*WM_LBUTTONDOWN*/
@@ -370,25 +379,25 @@ LRESULT CMainWindow::OnLButtonDown(WPARAM wParam, LPARAM lParam)
 {
 	::GetCursorPos(&m_cursorPos);
 
-	m_bLeftDowned = true;
+	m_wasLeftPressed = true;
 
 	return 0;
 }
 /*WM_LBUTTONUP*/
 LRESULT CMainWindow::OnLButtonUp(WPARAM wParam, LPARAM lParam)
 {
-	if (m_bLeftCombinated || m_bLeftDragged)
+	if (m_wasLeftCombinated || m_hasLeftBeenDragged)
 	{
-		m_bLeftDragged = false;
-		m_bLeftCombinated = false;
-		m_bLeftDowned = false;
+		m_hasLeftBeenDragged = false;
+		m_wasLeftCombinated = false;
+		m_wasLeftPressed = false;
 
 		return 0;
 	}
 	WORD usKey = LOWORD(wParam);
 	if (usKey == MK_RBUTTON)
 	{
-		if (m_bBarHidden)
+		if (m_isFramelessWindow)
 		{
 			::PostMessage(m_hWnd, WM_SYSCOMMAND, SC_MOVE, 0);
 			INPUT input{};
@@ -396,21 +405,44 @@ LRESULT CMainWindow::OnLButtonUp(WPARAM wParam, LPARAM lParam)
 			input.ki.wVk = VK_DOWN;
 			::SendInput(1, &input, sizeof(input));
 
-			m_bRightCombinated = true;
+			m_wasRightCombinated = true;
 		}
 	}
 
-	m_bLeftDowned = false;
+	m_wasLeftPressed = false;
 
 	return 0;
 }
 /*WM_RBUTTONUP*/
 LRESULT CMainWindow::OnRButtonUp(WPARAM wParam, LPARAM lParam)
 {
-	if (m_bRightCombinated)
+	if (m_wasRightCombinated)
 	{
-		m_bRightCombinated = false;
+		m_wasRightCombinated = false;
 		return 0;
+	}
+
+	if (m_pKarinchanScenePlayer.get() == nullptr || !m_pKarinchanScenePlayer->HasScenarioData())return 0;
+
+	WORD usKey = LOWORD(wParam);
+	if (usKey == 0)
+	{
+		const auto& labelData = m_pKarinchanScenePlayer->GetLabelData();
+		if (labelData.empty())return 0;
+
+		HMENU hPopupMenu = ::CreatePopupMenu();
+		if (hPopupMenu != nullptr)
+		{
+			for (size_t i = 0; i < labelData.size(); ++i)
+			{
+				::AppendMenuW(hPopupMenu, MF_STRING, Menu::kLabelStartIndex + i, labelData[i].wstrCaption.c_str());
+			}
+
+			POINT point{};
+			::GetCursorPos(&point);
+			::TrackPopupMenu(hPopupMenu, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_LEFTBUTTON, point.x, point.y, 0, m_hWnd, nullptr);
+			::DestroyMenu(hPopupMenu);
+		}
 	}
 
 	return 0;
@@ -422,20 +454,17 @@ LRESULT CMainWindow::OnMButtonUp(WPARAM wParam, LPARAM lParam)
 
 	if (usKey == 0)
 	{
-		if (m_bPlayReady)
+		if (m_pKarinchanScenePlayer.get() != nullptr && m_pKarinchanScenePlayer->HasScenarioData())
 		{
-			if (m_pKarinchanScenePlayer.get() != nullptr)
-			{
-				m_pKarinchanScenePlayer->ResetScale();
-				ResizeWindow();
-			}
+			m_pKarinchanScenePlayer->ResetScale();
+			ResizeWindow();
 		}
 	}
 	else if (usKey == MK_RBUTTON)
 	{
 		ToggleWindowBorderStyle();
 
-		m_bRightCombinated = true;
+		m_wasRightCombinated = true;
 	}
 
 	return 0;
@@ -552,22 +581,27 @@ bool CMainWindow::SetupScenario(const std::wstring& wstrFolderPath)
 		::SetWindowTextW(m_hWnd, m_pwzDefaultWindowName);
 	}
 
-	m_bPlayReady = bRet;
-
 	return bRet;
+}
+
+void CMainWindow::JumpToLabel(size_t nIndex)
+{
+	if (m_pKarinchanScenePlayer.get() == nullptr || !m_pKarinchanScenePlayer->HasScenarioData())return;
+
+	m_pKarinchanScenePlayer->JumpToLabel(nIndex);
 }
 /*表示形式変更*/
 void CMainWindow::ToggleWindowBorderStyle()
 {
-	if (!m_bPlayReady)return;
+	if (m_pKarinchanScenePlayer.get() == nullptr || !m_pKarinchanScenePlayer->HasScenarioData())return;
 
 	RECT rect;
 	::GetWindowRect(m_hWnd, &rect);
 	LONG lStyle = ::GetWindowLong(m_hWnd, GWL_STYLE);
 
-	m_bBarHidden ^= true;
+	m_isFramelessWindow ^= true;
 
-	if (m_bBarHidden)
+	if (m_isFramelessWindow)
 	{
 		::SetWindowLong(m_hWnd, GWL_STYLE, lStyle & ~WS_CAPTION & ~WS_SYSMENU);
 		::SetWindowPos(m_hWnd, nullptr, 0, 0, rect.right - rect.left, rect.bottom - rect.top, SWP_NOZORDER);

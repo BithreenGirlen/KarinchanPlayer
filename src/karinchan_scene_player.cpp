@@ -23,14 +23,14 @@ bool CKarinchanScenePlayer::LoadScenario(const std::wstring& wstrFolderPath)
 
 	std::vector<adv::ImageFileDatum> imageFileData;
 
-	karinchan::ReadScenario(wstrFolderPath, m_textData, imageFileData, m_sceneData);
+	karinchan::ReadScenario(wstrFolderPath, m_textData, imageFileData, m_sceneData, m_labelData);
 
-	bool bAnimationLoaded = false;
+	bool hasAnimationBeenLoaded = false;
 	for (const auto& imageFileDatum : imageFileData)
 	{
 		if (imageFileDatum.bAnimation)
 		{
-			if (!bAnimationLoaded)
+			if (!hasAnimationBeenLoaded)
 			{
 				std::vector<std::string> atlasPaths;
 				std::vector<std::string> skelPaths;
@@ -38,14 +38,10 @@ bool CKarinchanScenePlayer::LoadScenario(const std::wstring& wstrFolderPath)
 				std::string strAtlasPath = win_text::NarrowUtf8(wstrFolderPath) + "\\animation.atlas.txt";
 				std::string strSkelPath = win_text::NarrowUtf8(wstrFolderPath) + "\\animation.json";
 
-				atlasPaths.push_back(strAtlasPath);
-				skelPaths.push_back(strSkelPath);
+				atlasPaths.push_back(std::move(strAtlasPath));
+				skelPaths.push_back(std::move(strSkelPath));
 
-				bAnimationLoaded = m_dxLibSpinePlayer.LoadSpineFromFile(atlasPaths, skelPaths, false);
-				if (bAnimationLoaded)
-				{
-					ResetSpinePlayerScale();
-				}
+				hasAnimationBeenLoaded = m_dxLibSpinePlayer.LoadSpineFromFile(atlasPaths, skelPaths, false);
 			}
 
 			SImageDatum imageDatum;
@@ -91,6 +87,11 @@ bool CKarinchanScenePlayer::LoadScenario(const std::wstring& wstrFolderPath)
 	m_spineClock.Restart();
 
 	return !m_imageData.empty();
+}
+
+bool CKarinchanScenePlayer::HasScenarioData() const
+{
+	return !m_sceneData.empty();
 }
 
 void CKarinchanScenePlayer::Update()
@@ -156,8 +157,6 @@ void CKarinchanScenePlayer::ToggleTextColour()
 /*尺度変更*/
 void CKarinchanScenePlayer::RescaleImage(bool bUpscale)
 {
-	m_dxLibSpinePlayer.RescaleSkeleton(bUpscale);
-
 	if (bUpscale)
 	{
 		m_fScale += kfScaleFactor;
@@ -167,6 +166,11 @@ void CKarinchanScenePlayer::RescaleImage(bool bUpscale)
 		m_fScale -= kfScaleFactor;
 		if (m_fScale < kfMinScale)m_fScale = kfMinScale;
 	}
+
+	const auto& skeletonSize = m_dxLibSpinePlayer.GetBaseSize();
+	float fSkeletonScaleToBe = kDefaultWidth * m_fScale / skeletonSize.x;
+	m_dxLibSpinePlayer.SetSkeletonScale(fSkeletonScaleToBe);
+
 }
 /*時間尺度変更*/
 void CKarinchanScenePlayer::RescaleAnimationTime(bool bFaster)
@@ -217,6 +221,28 @@ void CKarinchanScenePlayer::ResetScale()
 
 	ResetSpinePlayerScale();
 }
+
+std::vector<adv::LabelDatum>& CKarinchanScenePlayer::GetLabelData()
+{
+	return m_labelData;
+}
+
+bool CKarinchanScenePlayer::JumpToLabel(size_t nLabelIndex)
+{
+	if (nLabelIndex < m_labelData.size())
+	{
+		const auto& labelDatum = m_labelData[nLabelIndex];
+
+		if (labelDatum.nSceneIndex < m_sceneData.size())
+		{
+			m_nSceneIndex = labelDatum.nSceneIndex;
+			PrepareScene();
+
+			return true;
+		}
+	}
+	return false;
+}
 /*台本データ消去*/
 void CKarinchanScenePlayer::ClearScenarioData()
 {
@@ -230,6 +256,8 @@ void CKarinchanScenePlayer::ClearScenarioData()
 
 	m_wstrFormattedText.clear();
 	m_usLastAnimationIndex = 0;
+
+	m_labelData.clear();
 }
 /*標準尺度算出*/
 void CKarinchanScenePlayer::WorkOutDefaultScale()
@@ -314,7 +342,7 @@ void CKarinchanScenePlayer::PrepareText()
 		size_t nTextIndex = m_sceneData[m_nSceneIndex].nTextIndex;
 		if (nTextIndex < m_textData.size())
 		{
-			std::wstring &wstr = m_wstrFormattedText;
+			std::wstring& wstr = m_wstrFormattedText;
 			const auto& t = m_textData[nTextIndex];
 
 			wstr = t.wstrName + L"\n" + t.wstrText;
@@ -408,8 +436,6 @@ void CKarinchanScenePlayer::DrawFormattedText()
 
 void CKarinchanScenePlayer::ResetSpinePlayerScale()
 {
-	/* 静止画の大きさに合わせる。*/
-
 	m_dxLibSpinePlayer.ResetScale();
 
 	float fScaleX = 1.f;

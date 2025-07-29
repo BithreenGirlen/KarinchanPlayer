@@ -47,7 +47,8 @@ private:
 	enum Menu
 	{
 		kOpenFolder = 1,
-		kAudioSetting, kFontSetting
+		kAudioSetting, kFontSetting,
+		kLabelStartIndex
 	};
 	enum MenuBar
 	{
@@ -55,15 +56,13 @@ private:
 	};
 
 	HMENU m_hMenuBar = nullptr;
-	bool m_bBarHidden = false;
+	bool m_isFramelessWindow = false;
 
 	POINT m_cursorPos{};
-	bool m_bLeftCombinated = false;
-	bool m_bLeftDowned = false;
-	bool m_bLeftDragged = false;
-	bool m_bRightCombinated = false;
-
-	bool m_bPlayReady = false;
+	bool m_wasLeftCombinated = false;
+	bool m_wasLeftPressed = false;
+	bool m_hasLeftBeenDragged = false;
+	bool m_wasRightCombinated = false;
 
 	void InitialiseMenuBar();
 
@@ -79,6 +78,7 @@ private:
 	size_t m_nFolderPathIndex = 0;
 
 	bool SetupScenario(const std::wstring& wstrFolderPath);
+	void JumpToLabel(size_t nIndex);
 
 	void ToggleWindowBorderStyle();
 	void ResizeWindow();

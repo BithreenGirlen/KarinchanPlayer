@@ -19,6 +19,7 @@ public:
 	~CKarinchanScenePlayer();
 
 	bool LoadScenario(const std::wstring& wstrFolderPath);
+	bool HasScenarioData() const;
 
 	void Update();
 	void Redraw();
@@ -38,6 +39,9 @@ public:
 	void MoveViewPoint(int iX, int iY);
 
 	void ResetScale();
+
+	std::vector<adv::LabelDatum>& GetLabelData();
+	bool JumpToLabel(size_t nLabelIndex);
 private:
 	using DxLibImageHandle = DxLibHandle<&DxLib::DeleteGraph>;
 	static constexpr int kDefaultWidth = 1920;
@@ -71,6 +75,8 @@ private:
 
 	std::vector<adv::SceneDatum> m_sceneData;
 	size_t m_nSceneIndex = 0;
+
+	std::vector<adv::LabelDatum> m_labelData;
 
 	CDxLibSpinePlayer m_dxLibSpinePlayer;
 	CDxLibClock m_spineClock;

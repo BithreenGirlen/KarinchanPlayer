@@ -1,4 +1,4 @@
-
+ï»¿
 #include <unordered_map>
 
 #include "karinchan.h"
@@ -8,7 +8,7 @@
 #include "text_utility.h"
 #include "path_utility.h"
 
-/* “à•”—p */
+/* å†…éƒ¨ç”¨ */
 namespace karinchan
 {
 	struct SCommandDatum
@@ -17,7 +17,7 @@ namespace karinchan
 		std::unordered_map<std::wstring, std::wstring> params;
 	};
 
-	/* w—ß•¶‰ğÍ */
+	/* æŒ‡ä»¤æ–‡è§£æ */
 	static void ParseCommand(const std::wstring& line, SCommandDatum& commandDatum)
 	{
 		size_t nStart = line.find(L'[');
@@ -28,7 +28,7 @@ namespace karinchan
 		size_t nPos = line.find(L' ', nStart);
 		if (nPos == std::wstring::npos)
 		{
-			/* •Ï”w’è–³‚µ */
+			/* å¤‰æ•°æŒ‡å®šç„¡ã— */
 			commandDatum.commandToken = line.substr(nStart, nEnd - nStart);
 			return;
 		}
@@ -69,8 +69,13 @@ namespace karinchan
 
 } /* namespace karinchan */
 
-/* ‘ä–{“Ç‚İæ‚è */
-bool karinchan::ReadScenario(const std::wstring& wstrFolderPath, std::vector<adv::TextDatum>& textData, std::vector<adv::ImageFileDatum>& imageFileData, std::vector<adv::SceneDatum>& sceneData)
+/* å°æœ¬èª­ã¿å–ã‚Š */
+bool karinchan::ReadScenario(
+	const std::wstring& wstrFolderPath,
+	std::vector<adv::TextDatum>& textData,
+	std::vector<adv::ImageFileDatum>& imageFileData,
+	std::vector<adv::SceneDatum>& sceneData,
+	std::vector<adv::LabelDatum>& labelData)
 {
 	std::wstring wstrScenarioFilePath = wstrFolderPath + L"\\script.txt";
 
@@ -82,6 +87,8 @@ bool karinchan::ReadScenario(const std::wstring& wstrFolderPath, std::vector<adv
 
 	adv::TextDatum textDatumBuffer;
 	adv::SceneDatum sceneDatumBuffer;
+	/* A label to the scene where still or animation will be switched. */
+	std::wstring labelBuffer;
 
 	for (const auto& line : lines)
 	{
@@ -90,11 +97,11 @@ bool karinchan::ReadScenario(const std::wstring& wstrFolderPath, std::vector<adv
 
 		if (line[0] != L'[')
 		{
-			 /* ’n‚Ì•¶E‘äŒ“à—e */
+			 /* åœ°ã®æ–‡ãƒ»å°è©å†…å®¹ */
 			size_t nPos = line.rfind(L"[p]");
 			if (nPos != std::wstring::npos)
 			{
-				/* ‹æØ‚è */
+				/* åŒºåˆ‡ã‚Š */
 				textDatumBuffer.wstrText += line.substr(0, nPos);
 
 				textData.push_back(textDatumBuffer);
@@ -102,6 +109,13 @@ bool karinchan::ReadScenario(const std::wstring& wstrFolderPath, std::vector<adv
 
 				sceneDatumBuffer.nTextIndex = textData.size() - 1;
 				sceneData.push_back(sceneDatumBuffer);
+
+				if (!labelBuffer.empty())
+				{
+					labelData.emplace_back(adv::LabelDatum{ labelBuffer, sceneData.size() - 1 });
+					labelBuffer.clear();
+				}
+
 			}
 			else
 			{
@@ -115,14 +129,14 @@ bool karinchan::ReadScenario(const std::wstring& wstrFolderPath, std::vector<adv
 
 			if (commandDatum.commandToken == L"textcmd")
 			{
-				/* ’n‚Ì•¶E‘äŒŠJn */
+				/* åœ°ã®æ–‡ãƒ»å°è©é–‹å§‹ */
 				if (!commandDatum.params.empty())
 				{
 					auto iter = commandDatum.params.find(L"name");
 					if (iter != commandDatum.params.cend())
 					{
 						textDatumBuffer.wstrName = iter->second;
-						text_utility::ReplaceAll(textDatumBuffer.wstrName, L"#user#", L"ˆê“");
+						text_utility::ReplaceAll(textDatumBuffer.wstrName, L"#user#", L"ä¸€åˆ€");
 					}
 
 					iter = commandDatum.params.find(L"voice");
@@ -135,7 +149,7 @@ bool karinchan::ReadScenario(const std::wstring& wstrFolderPath, std::vector<adv
 			}
 			else if (commandDatum.commandToken == L"cgstart")
 			{
-				/* Ã~‰æw’è */
+				/* é™æ­¢ç”»æŒ‡å®š */
 				const auto &iter = commandDatum.params.find(L"address");
 				if (iter != commandDatum.params.cend())
 				{
@@ -146,11 +160,13 @@ bool karinchan::ReadScenario(const std::wstring& wstrFolderPath, std::vector<adv
 					
 					imageFileData.push_back(std::move(imageFileDatum));
 					sceneDatumBuffer.nImageIndex = imageFileData.size() - 1;
+
+					labelBuffer = path_utility::ExtractFileName(iter->second);
 				}
 			}
 			else if (commandDatum.commandToken == L"animestart")
 			{
-				/* ƒAƒjƒ[ƒVƒ‡ƒ“w’è */
+				/* å‹•ä½œæŒ‡å®š */
 				auto iter = commandDatum.params.find(L"address");
 				if (iter != commandDatum.params.cend())
 				{
@@ -159,9 +175,9 @@ bool karinchan::ReadScenario(const std::wstring& wstrFolderPath, std::vector<adv
 					text_utility::ReplaceAll(iter->second, L"\"", L"");
 					imageFileDatum.wstrFilePath = wstrFolderPath + L"\\" + path_utility::TruncateFilePath(iter->second);
 
-					iter = commandDatum.params.find(L"anim");
-					if (iter == commandDatum.params.cend())continue;
-					unsigned long ulIndex = wcstoul(iter->second.c_str(), nullptr, 10);
+					const auto &animIter = commandDatum.params.find(L"anim");
+					if (animIter == commandDatum.params.cend())continue;
+					unsigned long ulIndex = wcstoul(animIter->second.c_str(), nullptr, 10);
 					imageFileDatum.animationParams.usIndex = static_cast<unsigned short>(ulIndex);
 
 					iter = commandDatum.params.find(L"loop");
@@ -170,6 +186,8 @@ bool karinchan::ReadScenario(const std::wstring& wstrFolderPath, std::vector<adv
 
 					imageFileData.push_back(std::move(imageFileDatum));
 					sceneDatumBuffer.nImageIndex = imageFileData.size() - 1;
+
+					labelBuffer = animIter->first + L"_" + animIter->second;
 				}
 			}
 		}
