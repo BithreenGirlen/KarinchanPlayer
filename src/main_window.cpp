@@ -488,14 +488,34 @@ void CMainWindow::InitialiseMenuBar()
 
 void CMainWindow::MenuOnOpenFolder()
 {
-	std::wstring wstrSelectedFolderPath = win_dialogue::SelectWorkFolder(nullptr, m_hWnd);
-	if (wstrSelectedFolderPath.empty())return;
+	std::wstring selectedFolderPath = win_dialogue::SelectWorkFolder(L"Select 03_chara/XXXX_03h folder", m_hWnd);
+	if (selectedFolderPath.empty())return;
 
-	if (SetupScenario(wstrSelectedFolderPath))
+	if (SetupScenario(selectedFolderPath))
 	{
 		m_folderPaths.clear();
 		m_nFolderPathIndex = 0;
-		win_filesystem::GetFilePathListAndIndex(wstrSelectedFolderPath, nullptr, m_folderPaths, &m_nFolderPathIndex);
+		win_filesystem::GetFilePathListAndIndex(selectedFolderPath, nullptr, m_folderPaths, &m_nFolderPathIndex);
+		std::erase_if(m_folderPaths, [](const std::wstring& s)
+			{
+				std::wstring_view folderName = path_utility::TruncateFilePath(s);
+				return folderName.find(L"_03h") == std::wstring_view::npos;
+			});
+		const auto& iter = std::find(m_folderPaths.begin(), m_folderPaths.end(), selectedFolderPath);
+		if (iter != m_folderPaths.cend())
+		{
+			m_nFolderPathIndex = std::distance(m_folderPaths.begin(), iter);
+		}
+		else
+		{
+			m_nFolderPathIndex /= 3;
+		}
+	}
+	else
+	{
+		::ValidateRect(m_hWnd, nullptr);
+		::MessageBoxW(m_hWnd, L"Failed to load scenario", L"Error", MB_ICONERROR);
+		::InvalidateRect(m_hWnd, nullptr, FALSE);
 	}
 }
 
@@ -533,7 +553,7 @@ bool CMainWindow::SetupScenario(const std::wstring& wstrFolderPath)
 
 	if (bRet)
 	{
-		std::wstring wstrWindowTitle = path_utility::TruncateFilePath(wstrFolderPath);
+		std::wstring wstrWindowTitle(path_utility::TruncateFilePath(wstrFolderPath));
 		::SetWindowTextW(m_hWnd, wstrWindowTitle.c_str());
 	}
 	else

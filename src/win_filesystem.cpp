@@ -8,6 +8,9 @@
 
 namespace win_filesystem
 {
+	/* 最大経路長 */
+	static constexpr size_t kMaxPathLength = 512;
+
 	/*指定階層のファイル・フォルダ名一覧取得*/
 	static bool CreateFilaNameList(const std::wstring& wstrFolderPath, const wchar_t* pwzFileNamePattern, std::vector<std::wstring>& wstrNames)
 	{
@@ -81,18 +84,18 @@ namespace win_filesystem
 }
 
 /*指定階層のファイル・フォルダ一覧作成*/
-bool win_filesystem::CreateFilePathList(const wchar_t* pwzFolderPath, const wchar_t* pwzFileSpec, std::vector<std::wstring>& paths, bool toAddParent)
+bool win_filesystem::CreateFilePathList(const wchar_t* folderPath, const wchar_t* fileSpec, std::vector<std::wstring>& paths, bool toAddParent)
 {
-	if (pwzFolderPath == nullptr || pwzFolderPath[0] == L'\0')return false;
+	if (folderPath == nullptr || folderPath[0] == L'\0')return false;
 
-	std::wstring wstrParent = pwzFolderPath;
+	std::wstring wstrParent = folderPath;
 	if (wstrParent.back() != L'\\')
 	{
 		wstrParent += L"\\";
 	}
 	std::vector<std::wstring> wstrNames;
 
-	if (pwzFileSpec != nullptr)
+	if (fileSpec != nullptr)
 	{
 		const auto SplitSpecs = [](const wchar_t* pwzFileSpec, std::vector<std::wstring>& specs)
 			-> void
@@ -119,7 +122,7 @@ bool win_filesystem::CreateFilePathList(const wchar_t* pwzFolderPath, const wcha
 				}
 			};
 		std::vector<std::wstring> specs;
-		SplitSpecs(pwzFileSpec, specs);
+		SplitSpecs(fileSpec, specs);
 
 		for (const auto& spec : specs)
 		{
@@ -128,7 +131,7 @@ bool win_filesystem::CreateFilePathList(const wchar_t* pwzFolderPath, const wcha
 	}
 	else
 	{
-		CreateFilaNameList(wstrParent, pwzFileSpec, wstrNames);
+		CreateFilaNameList(wstrParent, fileSpec, wstrNames);
 	}
 
 	/*名前順に整頓*/
@@ -188,23 +191,103 @@ bool win_filesystem::GetFilePathListAndIndex(const std::wstring& wstrPath, const
 
 	return iter != paths.cend();
 }
-/*文字列としてファイル読み込み*/
-std::string win_filesystem::LoadFileAsString(const wchar_t* pwzFilePath)
+
+std::wstring_view win_filesystem::GetCurrentProcessPath()
 {
-	std::string strResult;
+	static wchar_t s_basePath[kMaxPathLength]{};
+	static size_t s_basePathLength = 0;
+	if (s_basePath[0] == '\0')
+	{
+		static constexpr size_t basePathSize = sizeof(s_basePath) / sizeof(wchar_t);
+		DWORD length = ::GetModuleFileNameW(nullptr, s_basePath, basePathSize);
+		wchar_t* pEnd = s_basePath + length;
+		for (; pEnd != s_basePath; --pEnd)
+		{
+			if (*pEnd == L'\\' || *pEnd == L'/')break;
+		}
+
+		wchar_t* pFileName = pEnd + 1;
+		size_t fileNameLength = s_basePath + length - pFileName;
+		memset(pFileName, '\0', fileNameLength);
+
+		s_basePathLength = pFileName - s_basePath;
+	}
+
+	return std::wstring_view(s_basePath, s_basePathLength);
+}
+
+bool win_filesystem::CreateDirectoryStatic(std::wstring_view directoryName, wchar_t* dst, size_t& nWritten, size_t dstSize, std::wstring_view basePath)
+{
+	if (basePath.empty())
+	{
+		basePath = GetCurrentProcessPath();
+	}
+
+	if (dstSize < basePath.size())return false;
+
+	wmemcpy(dst, basePath.data(), basePath.size());
+	nWritten = basePath.size();
+
+	size_t nRead = 0;
+	if (dst[nWritten] != L'\\' && dst[nWritten] != L'/')
+	{
+		dst[nWritten++] = L'\\';
+		dst[nWritten] = L'\0';
+
+	}
+	if (directoryName[0] == L'\\' || directoryName[0] == L'/')++nRead;
+
+	for (;;)
+	{
+		size_t nPos = directoryName.find_first_of(L"\\/", nRead);
+		if (nPos == std::wstring_view::npos)
+		{
+			const wchar_t* pRead = directoryName.data() + nRead;
+			size_t nLength = directoryName.size() - nRead;
+			if (dstSize < nWritten + nLength + 1)return false;
+
+			wmemcpy(dst + nWritten, pRead, nLength);
+			nWritten += nLength;
+			dst[nWritten++] = L'\\';
+			dst[nWritten] = L'\0';
+
+			::CreateDirectoryW(dst, nullptr);
+
+			break;
+		}
+
+		const wchar_t* pRead = &directoryName[nRead];
+		size_t nLength = nPos - nRead;
+		if (dstSize < nWritten + nLength + 1)return false;
+
+		wmemcpy(dst + nWritten, pRead, nLength);
+		nWritten += nLength;
+		dst[nWritten++] = L'\\';
+
+		::CreateDirectoryW(dst, nullptr);
+
+		nRead = nPos + 1;
+	}
+
+	return true;
+}
+/*文字列としてファイル読み込み*/
+std::string win_filesystem::LoadFileAsString(const wchar_t* filePath)
+{
+	std::string fileData;
 	HANDLE hFile = INVALID_HANDLE_VALUE;
 	DWORD ulSize = INVALID_FILE_SIZE;
 	DWORD ulRead = 0;
 	BOOL iRet = FALSE;
 
-	hFile = ::CreateFileW(pwzFilePath, GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+	hFile = ::CreateFileW(filePath, GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 	if (hFile == INVALID_HANDLE_VALUE)goto end;
 
 	ulSize = ::GetFileSize(hFile, nullptr);
 	if (ulSize == INVALID_FILE_SIZE)goto end;
 
-	strResult.resize(ulSize);
-	iRet = ::ReadFile(hFile, &strResult[0], ulSize, &ulRead, nullptr);
+	fileData.resize(ulSize);
+	iRet = ::ReadFile(hFile, &fileData[0], ulSize, &ulRead, nullptr);
 	/* To suppress warning C28193 */
 	if (iRet == FALSE)goto end;
 
@@ -214,106 +297,33 @@ end:
 		::CloseHandle(hFile);
 	}
 
-	return strResult;
+	return fileData;
 }
 
-std::wstring win_filesystem::GetCurrentProcessPath()
+bool win_filesystem::SaveStringToFile(const wchar_t* filePath, const void* pData, unsigned long dataLength, bool toOverWrite)
 {
-	wchar_t sBuffer[MAX_PATH]{};
-	DWORD ulLength = ::GetModuleFileNameW(nullptr, sBuffer, MAX_PATH);
-	if (ulLength == 0)return {};
-
-	const wchar_t* p = sBuffer + ulLength;
-	for (; p != sBuffer; --p)
+	if (filePath != nullptr)
 	{
-		if (*p == L'\\' || *p == '/')break;
-	}
-	return std::wstring(sBuffer, p - sBuffer);
-}
-
-std::wstring win_filesystem::CreateWorkFolder(const std::wstring& wstrRelativePath)
-{
-	if (wstrRelativePath.empty())return std::wstring();
-
-	std::wstring wstrPath = GetCurrentProcessPath();
-	if (wstrPath.empty())return std::wstring{};
-
-	wstrPath.push_back(L'\\');
-	size_t nRead = 0;
-	if (wstrRelativePath[0] == L'\\' || wstrRelativePath[0] == L'/')++nRead;
-
-	for (const wchar_t* pStart = wstrRelativePath.data();;)
-	{
-		size_t nPos = wstrRelativePath.find_first_of(L"\\/", nRead);
-		if (nPos == std::wstring::npos)
-		{
-			wstrPath.append(pStart + nRead, wstrRelativePath.size() - nRead);
-			wstrPath.push_back(L'\\');
-			::CreateDirectoryW(wstrPath.c_str(), nullptr);
-
-			break;
-		}
-		wstrPath.append(pStart + nRead, nPos - nRead);
-		wstrPath.push_back(L'\\');
-		::CreateDirectoryW(wstrPath.c_str(), nullptr);
-
-		nRead = nPos + 1;
-	}
-
-	return wstrPath;
-}
-
-bool win_filesystem::CreateFolderByAbsolutePath(const std::wstring& wstrAbsolutePath)
-{
-	std::wstring wstrPath = wstrAbsolutePath;
-	for (unsigned int i = 0;;)
-	{
-		bool bRet = MakeDirectory(wstrPath);
-		if (bRet)
-		{
-			if (i == 0)return true;
-			else
-			{
-				size_t nPos = wstrPath.find(L'\0');
-				if (nPos == std::wstring::npos)return false;
-				wstrPath[nPos] = L'\\';
-				--i;
-				continue;
-			}
-		}
-
-		size_t nPos = wstrPath.find_last_of(L"\\/");
-		if (nPos == std::wstring::npos)return false;
-		wstrPath[nPos] = L'\0';
-		++i;
-	}
-
-	return false;
-}
-
-bool win_filesystem::SaveStringToFile(const wchar_t* pwzFilePath, const char* szData, unsigned long ulDataLength, bool bOverWrite)
-{
-	if (pwzFilePath != nullptr)
-	{
-		HANDLE hFile = ::CreateFileW(pwzFilePath, GENERIC_WRITE, 0, nullptr, bOverWrite ? CREATE_ALWAYS : OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+		HANDLE hFile = ::CreateFileW(filePath, GENERIC_WRITE, 0, nullptr, toOverWrite ? CREATE_ALWAYS : OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 		if (hFile != INVALID_HANDLE_VALUE)
 		{
 			::SetFilePointer(hFile, NULL, nullptr, FILE_END);
-			DWORD dwWritten = 0;
-			BOOL iRet = ::WriteFile(hFile, szData, ulDataLength, &dwWritten, nullptr);
+			DWORD nWritten = 0;
+			BOOL iRet = ::WriteFile(hFile, pData, dataLength, &nWritten, nullptr);
 			::CloseHandle(hFile);
+
 			return iRet == TRUE;
 		}
 	}
 	return false;
 }
 
-bool win_filesystem::DoesFileExist(const wchar_t* pwzFilePath)
+bool win_filesystem::DoesFileExist(const wchar_t* filePath)
 {
-	return ::PathFileExistsW(pwzFilePath) == TRUE;
+	return ::PathFileExistsW(filePath) == TRUE;
 }
 
-bool win_filesystem::RenameFile(const wchar_t* swzExistingFilePath, const wchar_t* swzNewFilePath)
+bool win_filesystem::RenameFile(const wchar_t* filePathOld, const wchar_t* filePathNew)
 {
-	return ::MoveFileW(swzExistingFilePath, swzNewFilePath) != 0;
+	return ::MoveFileW(filePathOld, filePathNew) != 0;
 }

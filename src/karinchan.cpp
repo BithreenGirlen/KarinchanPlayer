@@ -13,58 +13,68 @@ namespace karinchan
 {
 	struct SCommandDatum
 	{
-		std::wstring commandToken;
-		std::unordered_map<std::wstring, std::wstring> params;
+		std::wstring_view commandToken;
+		std::unordered_map<std::wstring_view, std::wstring_view> params;
 	};
 
 	/* 指令文解析 */
-	static void ParseCommand(const std::wstring& line, SCommandDatum& commandDatum)
+	static void ParseCommand(std::wstring_view line, SCommandDatum& commandDatum)
 	{
 		size_t nStart = line.find(L'[');
 		size_t nEnd = line.rfind(L']');
-		if (nStart == std::wstring::npos || nEnd == std::wstring::npos)return;
+		if (nStart == std::wstring_view::npos || nEnd == std::wstring_view::npos)return;
 
 		++nStart;
 		size_t nPos = line.find(L' ', nStart);
-		if (nPos == std::wstring::npos)
+		if (nPos == std::wstring_view::npos)
 		{
 			/* 変数指定無し */
-			commandDatum.commandToken = line.substr(nStart, nEnd - nStart);
+			commandDatum.commandToken = std::wstring_view(&line[nStart], nEnd - nStart);
 			return;
 		}
 		else
 		{
-			commandDatum.commandToken = line.substr(nStart, nPos - nStart);
+			commandDatum.commandToken = std::wstring_view(&line[nStart], nPos - nStart);
 			++nPos;
 		}
 
-		std::wstring paramName;
-		std::wstring paramValue;
+		std::wstring_view paramName;
+		std::wstring_view paramValue;
 
 		for (size_t nRead = nPos; nRead < nEnd; ++nRead)
 		{
 			const wchar_t p = line[nRead];
 			if (p == L' ')
 			{
-				paramValue = line.substr(nPos, nRead - nPos);
+				paramValue = std::wstring_view(&line[nPos], nRead - nPos);
 				commandDatum.params.insert({ paramName, paramValue });
 				nPos = nRead + 1;
 
-				paramValue.clear();
-				paramName.clear();
+				paramName = {};
 			}
 			else if (p == L'=')
 			{
-				paramName = line.substr(nPos, nRead - nPos);
+				paramName = std::wstring_view(&line[nPos], nRead - nPos);
 				nPos = nRead + 1;
 			}
 		}
 
 		if (!paramName.empty())
 		{
-			paramValue = line.substr(nPos, nEnd - nPos);
+			paramValue = std::wstring_view(&line[nPos], nEnd - nPos);
 			commandDatum.params.insert({ paramName, paramValue });
 		}
+	}
+
+	static std::wstring_view UnQuote(std::wstring_view s)
+	{
+		if (s.size() > 2 && s.front() == L'"' && s.back() == L'"')
+		{
+			s.remove_prefix(1);
+			s.remove_suffix(1);
+		}
+
+		return s;
 	}
 
 } /* namespace karinchan */
@@ -82,7 +92,7 @@ bool karinchan::ReadScenario(
 	std::wstring wstrFile = win_text::WidenUtf8(win_filesystem::LoadFileAsString(wstrScenarioFilePath.c_str()));
 	if (wstrFile.empty())return false;
 
-	std::vector<std::wstring> lines;
+	std::vector<std::wstring_view> lines;
 	text_utility::TextToLines(wstrFile, lines);
 
 	adv::TextDatum textDatumBuffer;
@@ -102,10 +112,9 @@ bool karinchan::ReadScenario(
 			if (nPos != std::wstring::npos)
 			{
 				/* 区切り */
-				textDatumBuffer.wstrText += line.substr(0, nPos);
+				textDatumBuffer.wstrText.append(line.data(), nPos);
 
-				textData.push_back(textDatumBuffer);
-				textDatumBuffer = adv::TextDatum();
+				textData.push_back(std::move(textDatumBuffer));
 
 				sceneDatumBuffer.nTextIndex = textData.size() - 1;
 				sceneData.push_back(sceneDatumBuffer);
@@ -142,8 +151,12 @@ bool karinchan::ReadScenario(
 					iter = commandDatum.params.find(L"voice");
 					if (iter != commandDatum.params.cend())
 					{
-						text_utility::ReplaceAll(iter->second, L"\"", L"");
-						textDatumBuffer.wstrVoiceFilePath.assign(wstrFolderPath).append(L"\\").append(path_utility::ExtractFileName(iter->second)).append(L".m4a");
+						std::wstring_view filePath = UnQuote(iter->second);
+#ifdef TO_FLATTEN_RESOURCE_PATH
+						textDatumBuffer.wstrVoiceFilePath.assign(wstrFolderPath).append(L"\\").append(path_utility::ExtractFileNameWithoutExtension(filePath)).append(L".m4a");
+#else
+						textDatumBuffer.wstrVoiceFilePath.assign(wstrFolderPath).append(L"\\").append(path_utility::ReplaceFullExtension(filePath, std::wstring_view(L".m4a")));
+#endif
 					}
 				}
 			}
@@ -153,15 +166,21 @@ bool karinchan::ReadScenario(
 				const auto &iter = commandDatum.params.find(L"address");
 				if (iter != commandDatum.params.cend())
 				{
+					std::wstring_view filePath = UnQuote(iter->second);
+
 					adv::ImageFileDatum imageFileDatum;
 					imageFileDatum.isAnimation = false;
-					text_utility::ReplaceAll(iter->second, L"\"", L"");
-					imageFileDatum.wstrFilePath.assign(wstrFolderPath).append(L"\\").append(path_utility::TruncateFilePath(iter->second));
-					
+					/* 一部台本に".jpg"指定あり */
+#ifdef TO_FLATTEN_RESOURCE_PATH
+					imageFileDatum.wstrFilePath.assign(wstrFolderPath).append(L"\\").append(path_utility::ExtractFileNameWithoutExtension(filePath)).append(L".png");
+#else
+					imageFileDatum.wstrFilePath.assign(wstrFolderPath).append(L"\\").append(path_utility::ReplaceFullExtension(filePath, std::wstring_view(L".png")));
+#endif
+				
 					imageFileData.push_back(std::move(imageFileDatum));
 					sceneDatumBuffer.nImageIndex = imageFileData.size() - 1;
 
-					labelBuffer = path_utility::ExtractFileName(iter->second);
+					labelBuffer = path_utility::ExtractFileNameWithoutExtension(iter->second);
 				}
 			}
 			else if (commandDatum.commandToken == L"animestart")
@@ -170,14 +189,18 @@ bool karinchan::ReadScenario(
 				auto iter = commandDatum.params.find(L"address");
 				if (iter != commandDatum.params.cend())
 				{
+					std::wstring_view filePath = UnQuote(iter->second);
+
 					adv::ImageFileDatum imageFileDatum;
 					imageFileDatum.isAnimation = true;
-					text_utility::ReplaceAll(iter->second, L"\"", L"");
-					imageFileDatum.wstrFilePath.assign(wstrFolderPath).append(L"\\").append(path_utility::TruncateFilePath(iter->second));
-
+#ifdef TO_FLATTEN_RESOURCE_PATH
+					imageFileDatum.wstrFilePath.assign(wstrFolderPath).append(L"\\").append(path_utility::TruncateFilePath(filePath));
+#else
+					imageFileDatum.wstrFilePath.assign(wstrFolderPath).append(L"\\").append(filePath);
+#endif
 					const auto &animIter = commandDatum.params.find(L"anim");
 					if (animIter == commandDatum.params.cend())continue;
-					unsigned long ulIndex = wcstoul(animIter->second.c_str(), nullptr, 10);
+					unsigned long ulIndex = wcstoul(animIter->second.data(), nullptr, 10);
 					imageFileDatum.animationParams.usIndex = static_cast<unsigned short>(ulIndex);
 
 					iter = commandDatum.params.find(L"loop");

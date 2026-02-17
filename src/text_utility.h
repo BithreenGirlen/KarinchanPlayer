@@ -7,21 +7,21 @@
 namespace text_utility
 {
 	template <typename CharType>
-	void TextToLines(const std::basic_string<CharType>& text, std::vector<std::basic_string<CharType>>& lines)
+	void TextToLines(const std::basic_string<CharType>& text, std::vector<std::basic_string_view<CharType>>& lines)
 	{
-		constexpr CharType key[] = { '\r', '\n', '\0' };
+		constexpr CharType key[] = { static_cast<CharType>('\r'), static_cast<CharType>('\n'), static_cast<CharType>('\0') };
 		for (size_t nRead = 0;;)
 		{
 			size_t nPos = text.find_first_of(key, nRead);
 			if (nPos == std::basic_string<CharType>::npos)
 			{
-				lines.emplace_back(&text[nRead], text.size() - nRead);
+				lines.emplace_back(std::basic_string_view(&text[nRead], text.size() - nRead));
 				break;
 			}
 			size_t nLen = nPos - nRead;
 			if (nLen > 1)
 			{
-				lines.emplace_back(&text[nRead], nLen);
+				lines.emplace_back(std::basic_string_view(&text[nRead], nLen));
 			}
 
 			nRead = nPos + 1;

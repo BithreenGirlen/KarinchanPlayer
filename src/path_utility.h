@@ -6,60 +6,73 @@
 namespace path_utility
 {
 	template <typename CharType>
-	std::basic_string<CharType> ExtractDirectory(const std::basic_string<CharType>& filePath)
+	std::basic_string_view<CharType> TruncateFilePath(std::basic_string_view<CharType> filePath)
 	{
-		const CharType separators[] = { '\\', '/', '\0' };
+		constexpr CharType separators[] = { static_cast<CharType>('\\'), static_cast<CharType>('/'), static_cast <CharType>('\0') };
+
 		size_t nPos = filePath.find_last_of(separators);
-		if (nPos != std::basic_string<CharType>::npos)
-		{
-			return filePath.substr(0, nPos);
-		}
-		return filePath;
+		if (nPos == std::basic_string_view<CharType>::npos)nPos = 0;
+		else ++nPos;
+
+		return { &filePath[nPos], filePath.size() - nPos };
+	}
+	template <typename CharType>
+	std::basic_string_view<CharType> TruncateFilePath(const std::basic_string<CharType>& filePath)
+	{
+		return TruncateFilePath(std::basic_string_view<CharType>(filePath));
 	}
 
 	template <typename CharType>
-	std::basic_string<CharType> ExtractFileName(const std::basic_string<CharType>& filePath)
+	std::basic_string_view<CharType> ExtractFileNameWithoutExtension(std::basic_string_view<CharType> filePath)
 	{
-		const CharType separators[] = { '\\', '/', '\0' };
+		constexpr CharType separators[] = { static_cast<CharType>('\\'), static_cast<CharType>('/'), static_cast <CharType>('\0') };
+
+		size_t nPos1 = filePath.find_last_of(separators);
+		if (nPos1 == std::basic_string_view<CharType>::npos)nPos1 = 0;
+		else ++nPos1;
+
+		size_t nPos2 = filePath.find(CharType('.'), nPos1);
+		if (nPos2 == std::basic_string_view<CharType>::npos)nPos2 = filePath.size();
+
+		return { &filePath[nPos1], nPos2 - nPos1 };
+	}
+	template <typename CharType>
+	std::basic_string_view<CharType> ExtractFileNameWithoutExtension(const std::basic_string<CharType>& filePath)
+	{
+		return ExtractFileNameWithoutExtension(std::basic_string_view<CharType>(filePath));
+	}
+
+	template <typename CharType>
+	std::basic_string_view<CharType> ExtractParentPath(std::basic_string_view<CharType> filePath)
+	{
+		constexpr CharType separators[] = { static_cast<CharType>('\\'), static_cast<CharType>('/'), static_cast <CharType>('\0') };
+
 		size_t nPos = filePath.find_last_of(separators);
-		nPos = nPos == std::basic_string<CharType>::npos ? 0 : nPos + 1;
+		if (nPos == std::basic_string_view<CharType>::npos)nPos = filePath.size();
 
-		size_t nPos2 = filePath.find(CharType('.'), nPos);
-		if (nPos2 == std::basic_string<CharType>::npos)nPos2 = filePath.size();
-
-		return filePath.substr(nPos, nPos2 - nPos);
+		return { filePath.data(), nPos };
 	}
 	template <typename CharType>
-	std::basic_string<CharType> ExtractFileName(const CharType* filePath)
+	std::basic_string_view<CharType> ExtractParentPath(const std::basic_string<CharType>& filePath)
 	{
-		return ExtractFileName(std::basic_string<CharType>(filePath));
+		return ExtractParentPath(std::basic_string_view<CharType>(filePath));
 	}
 
 	template <typename CharType>
-	std::basic_string<CharType> TruncateFilePath(const std::basic_string<CharType>& filePath)
+	std::basic_string<CharType> ReplaceFullExtension(std::basic_string_view<CharType> filePath, std::basic_string_view<CharType> extension)
 	{
-		const CharType separators[] = { '\\', '/', '\0' };
-		size_t nPos = filePath.find_last_of(separators);
-		if (nPos != std::basic_string<CharType>::npos)
-		{
-			return filePath.substr(nPos + 1);
-		}
-		return filePath;
-	}
+		constexpr CharType separators[] = { static_cast<CharType>('\\'), static_cast<CharType>('/'), static_cast <CharType>('\0') };
 
-	template <typename CharType>
-	std::basic_string<CharType> GetExtensionFromFileName(const std::basic_string<CharType>& filePath)
-	{
-		size_t nPos = filePath.rfind(CharType('/'));
-		nPos = nPos != std::basic_string<CharType>::npos ? nPos + 1 : 0;
+		size_t nPos1 = filePath.find_last_of(separators);
+		if (nPos1 == std::basic_string_view<CharType>::npos)nPos1 = 0;
+		else ++nPos1;
 
-		nPos = filePath.find(CharType('.'), nPos);
-		if (nPos != std::basic_string<CharType>::npos)
-		{
-			return filePath.substr(nPos);
-		}
+		size_t nPos2 = filePath.find(CharType('.'), nPos1);
+		if (nPos2 == std::basic_string_view<CharType>::npos)nPos2 = filePath.size();
 
-		return std::basic_string<CharType>();
+		std::basic_string<CharType> replaced(filePath.data(), nPos2);
+		
+		return replaced.append(extension);
 	}
 }
 #endif // !PATH_UTILITY_H_

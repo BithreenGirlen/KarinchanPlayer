@@ -1,4 +1,4 @@
-# KarinchanPlayer
+﻿# KarinchanPlayer
 某寝室用
 
 ## How to play
@@ -7,18 +7,23 @@ Select a folder such as the following from application menu `File->Open folder`.
 
 <pre>
 ...
-├ 0069_03h
-│  ├ 01_a_kouimae.png        // Still image
-│  ├ ...
-│  ├ 04_a_jigo.png
-│  ├ 0069_03h_machi_001.m4a  // Voice file
-│  ├ ...
-│  ├ 0069_03h_machi_100.m4a
-│  ├ animation.atlas.txt     // Spine atlas
-│  ├ animation.json          // Spine skeleton
-│  ├ animation.png           // Spine texture
-│  ├ animation_2.png
-│  └ script.txt              // Scenario script
+├ 0069_03h // A folder to be selected
+│  ├ anime
+│  │  └ 0069_machi_01
+│  │     ├ animation.atlas.txt      // Spine atlas
+│  │     ├ animation.json           // Spine skeleton
+│  │     ├ animation.png            // Spine texture
+│  │     └ animation_2.png
+│  ├ cg
+│  │  ├ 01_a_kouimae.png            // Still image
+│  │  ├ ...
+│  │  └ 04_a_jigo.png
+│  ├ voice
+│  │  └ wav
+│  │     ├ 0069_03h_machi_001.m4a   // Voice file
+│  │     ├ a...
+│  │     └ 0069_03h_machi_100.m4a
+│  └ script.txt                     // Scenario script
 └ ...
 </pre>
 

@@ -50,8 +50,13 @@ bool CKarinchanScenePlayer::loadScenario(const std::wstring& folderPath)
 				std::vector<std::string> atlasPaths;
 				std::vector<std::string> skelPaths;
 
+#ifdef TO_FLATTEN_RESOURCE_PATH
 				std::string atlasPath = win_text::NarrowUtf8(folderPath) + "\\animation.atlas.txt";
 				std::string skelPath = win_text::NarrowUtf8(folderPath) + "\\animation.json";
+#else
+				std::string atlasPath = win_text::NarrowUtf8(imageFileDatum.wstrFilePath) + "\\animation.atlas.txt";
+				std::string skelPath = win_text::NarrowUtf8(imageFileDatum.wstrFilePath) + "\\animation.json";
+#endif
 
 				atlasPaths.push_back(std::move(atlasPath));
 				skelPaths.push_back(std::move(skelPath));
@@ -64,10 +69,15 @@ bool CKarinchanScenePlayer::loadScenario(const std::wstring& folderPath)
 				}
 			}
 
-			SImageDatum imageDatum;
-			imageDatum.isAnimation = true;
-			imageDatum.animationParams.loop = imageFileDatum.animationParams.loop;
-			imageDatum.animationParams.usIndex = imageFileDatum.animationParams.usIndex;
+			SImageDatum imageDatum
+			{
+				.isAnimation = true,
+				.animationParams
+				{
+					.loop = imageFileDatum.animationParams.loop,
+					.usIndex = imageFileDatum.animationParams.usIndex
+				}
+			};
 
 			m_imageData.push_back(std::move(imageDatum));
 		}
@@ -89,10 +99,15 @@ bool CKarinchanScenePlayer::loadScenario(const std::wstring& folderPath)
 			{
 				m_imageHandles.push_back(std::move(dxLibImageHandle));
 
-				SImageDatum imageDatum;
-				imageDatum.isAnimation = false;
-				imageDatum.stillParams.usIndex = static_cast<unsigned short>(m_imageHandles.size() - 1);
-				imageDatum.stillParams.fScale = fScale;
+				SImageDatum imageDatum
+				{
+					.isAnimation = false,
+					.stillParams
+					{
+						.usIndex = static_cast<unsigned short>(m_imageHandles.size() - 1),
+						.fScale = fScale
+					}
+				};
 
 				m_imageData.push_back(std::move(imageDatum));
 			}
@@ -378,15 +393,19 @@ void CKarinchanScenePlayer::prepareText()
 			std::wstring& wstr = m_wstrFormattedText;
 			const auto& t = m_textData[nTextIndex];
 
-			wstr += t.wstrName + L"\n" + t.wstrText;
-			const int nCountToBreak = 23;
-			for (size_t i = t.wstrName.size() + 2 + nCountToBreak; i < wstr.size(); i += nCountToBreak)
-			{
-				wstr.insert(i, L"\n");
-			}
-			if (wstr.back() != L'\n')wstr += L'\n';
+			wstr += t.wstrName;
+			wstr += '\n';
 
-			wchar_t sBuffer[16]{};
+			constexpr size_t nCountToBreak = 23;
+			const size_t messageLength = t.wstrText.size();
+			for (size_t nWritten = 0; nWritten < messageLength; nWritten += nCountToBreak)
+			{
+				const size_t nCountToWrite = (std::min)(nCountToBreak, messageLength - nWritten);
+				wstr.append(t.wstrText, nWritten, nCountToWrite);
+				wstr += L'\n';
+			}
+
+			wchar_t sBuffer[32]{};
 			swprintf_s(sBuffer, L"%zu/%zu", nTextIndex + 1, m_textData.size());
 			wstr += sBuffer;
 
