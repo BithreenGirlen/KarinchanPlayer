@@ -12,7 +12,6 @@ if(MSVC)
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 endif()
 
-target_compile_features("${SPINE_LIBRARY_NAME}" PUBLIC cxx_std_14)
 # set_target_properties("${SPINE_LIBRARY_NAME}" PROPERTIES DEBUG_POSTFIX "-d")
 
 install(

@@ -527,7 +527,7 @@ failed:
 
 void CMainWindow::MenuOnOpenFolder()
 {
-	std::wstring wstrSelectedFolderPath = win_dialogue::SelectWorkFolder(m_hWnd);
+	std::wstring wstrSelectedFolderPath = win_dialogue::SelectWorkFolder(nullptr, m_hWnd);
 	if (wstrSelectedFolderPath.empty())return;
 
 	if (SetupScenario(wstrSelectedFolderPath))

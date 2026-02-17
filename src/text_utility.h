@@ -9,43 +9,39 @@ namespace text_utility
 	template <typename CharType>
 	void TextToLines(const std::basic_string<CharType>& text, std::vector<std::basic_string<CharType>>& lines)
 	{
-		std::basic_string<CharType> temp{};
-		for (auto& c : text)
+		constexpr CharType key[] = { '\r', '\n', '\0' };
+		for (size_t nRead = 0;;)
 		{
-			if (c == CharType('\r') || c == CharType('\n'))
+			size_t nPos = text.find_first_of(key, nRead);
+			if (nPos == std::basic_string<CharType>::npos)
 			{
-				if (!temp.empty())
-				{
-					lines.push_back(temp);
-					temp.clear();
-				}
-				continue;
+				lines.emplace_back(&text[nRead], text.size() - nRead);
+				break;
 			}
-			temp.push_back(c);
-		}
+			size_t nLen = nPos - nRead;
+			if (nLen > 1)
+			{
+				lines.emplace_back(&text[nRead], nLen);
+			}
 
-		if (!temp.empty())
-		{
-			lines.push_back(temp);
+			nRead = nPos + 1;
 		}
 	}
 
 	template <typename CharType>
 	void SplitTextBySeparator(const std::basic_string<CharType>& text, const CharType separator, std::vector<std::basic_string<CharType>>& splits)
 	{
-		for (size_t nRead = 0; nRead < text.size();)
+		for (size_t nRead = 0;;)
 		{
 			size_t nPos = text.find(separator, nRead);
 			if (nPos == std::basic_string<CharType>::npos)
 			{
-				size_t nLen = text.size() - nRead;
-				splits.emplace_back(text.substr(nRead, nLen));
+				splits.emplace_back(&text[nRead], text.size() - nRead);
 				break;
 			}
 
-			size_t nLen = nPos - nRead;
-			splits.emplace_back(text.substr(nRead, nLen));
-			nRead += nLen + 1;
+			splits.emplace_back(&text[nRead], nPos - nRead);
+			nRead = nPos + 1;
 		}
 	}
 
@@ -54,19 +50,50 @@ namespace text_utility
 	{
 		if (strOld.empty() || strOld == strNew) return;
 
-		for (size_t nRead = 0;;)
+		for (size_t nPos = 0;;)
 		{
-			size_t nPos = src.find(strOld, nRead);
-			if (nPos == std::basic_string<CharType>::npos) break;
+			nPos = src.find(strOld, nPos);
+			if (nPos == std::basic_string<CharType>::npos)break;
 			src.replace(nPos, strOld.size(), strNew);
-			nRead = nPos + strNew.size();
+			nPos += strNew.size();
 		}
 	}
-	template <typename CharType>
-	void ReplaceAll(std::basic_string<CharType>& src, const CharType* strOld, const CharType* strNew)
+	template <typename CharType, size_t sizeOld, size_t sizeNew>
+	void ReplaceAll(std::basic_string<CharType>& src, const CharType(&strOld)[sizeOld], const CharType(&strNew)[sizeNew])
 	{
-		ReplaceAll(src, std::basic_string<CharType>(strOld), std::basic_string<CharType>(strNew));
+		constexpr size_t lenOld = sizeOld - 1;
+		constexpr size_t lenNew = sizeNew - 1;
+
+		if (lenOld == 0 || (lenOld == lenNew && std::char_traits<CharType>::compare(strOld, strNew, lenOld) == 0)) return;
+
+		for (size_t nPos = 0;;)
+		{
+			nPos = src.find(strOld, nPos, lenOld);
+			if (nPos == std::basic_string<CharType>::npos)break;
+			src.replace(nPos, lenOld, strNew, lenNew);
+			nPos += lenNew;
+		}
 	}
+#if (defined(_MSVC_LANG) && _MSVC_LANG >= 202002L) || (defined(__cplusplus) && __cplusplus >= 202002L)
+	template <size_t sizeOld, size_t sizeNew>
+	void ReplaceAll(std::string& src, const char8_t(&strOld)[sizeOld], const char8_t(&strNew)[sizeNew])
+	{
+		constexpr size_t lenOld = sizeOld - 1;
+		constexpr size_t lenNew = sizeNew - 1;
+
+		const char* pOld = reinterpret_cast<const char*>(strOld);
+		const char* pNew = reinterpret_cast<const char*>(strNew);
+
+		for (size_t nPos = 0;;)
+		{
+			nPos = src.find(pOld, nPos, lenOld);
+			if (nPos == std::string::npos) break;
+
+			src.replace(nPos, lenOld, pNew, lenNew);
+			nPos += lenNew;
+		}
+	}
+#endif
 
 	template <typename CharType>
 	void EliminateTag(std::basic_string<CharType>& src)
@@ -92,29 +119,7 @@ namespace text_utility
 				result.push_back(c);
 			}
 		}
-		src = result;
-	}
-
-	template <typename CharType>
-	void EliminateRuby(std::basic_string<CharType>& src)
-	{
-		const CharType strRuby[] = { '<', 'r', 'u', 'b', 'y', '>', '\0' };
-
-		for (size_t nRead = 0;;)
-		{
-			size_t nPos = src.find(strRuby, nRead);
-			if (nPos == std::basic_string<CharType>::npos)break;
-
-			size_t nPos1 = src.find(CharType('|'), nPos);
-			if (nPos1 == std::basic_string<CharType>::npos)break;
-
-			size_t nPos2 = src.find(CharType('<'), nPos1);
-			if (nPos2 == std::basic_string<CharType>::npos)break;
-
-			size_t nLen = nPos2 - nPos1;
-			src.erase(nPos1, nLen);
-			nRead = nPos1;
-		}
+		src = std::move(result);
 	}
 
 	template <typename CharType>

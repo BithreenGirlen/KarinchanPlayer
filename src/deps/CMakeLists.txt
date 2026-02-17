@@ -49,9 +49,18 @@ if (NOT EXISTS "${SPINE_RUNTIME_DIR}/lib")
 	file(COPY "${TEMP_DIR}/${SPINE_FOLDER_NAME}/${SPINE_RUNTIME_LANGUAGE}/${SPINE_RUNTIME_LANGUAGE}/include" DESTINATION "${SPINE_RUNTIME_DIR}")
 endif()
 
+# Delete Spine runtimes for other languages than C++,
+# and DxLib static libraries for other compilers than MSVC.
+file(REMOVE_RECURSE "${TEMP_DIR}")
+
 if (POLICY CMP0141)
   cmake_policy(SET CMP0141 NEW)
   set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>,$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>>")
+endif()
+
+if(MSVC)
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+	add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/d1trimfile:${CMAKE_SOURCE_DIR}\\>")
 endif()
 
 # Build Spine runtime as static library

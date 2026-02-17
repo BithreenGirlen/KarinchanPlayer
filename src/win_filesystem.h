@@ -6,7 +6,7 @@
 
 namespace win_filesystem
 {
-	bool CreateFilePathList(const wchar_t* pwzFolderPath, const wchar_t* pwzFileSpec, std::vector<std::wstring>& paths);
+	bool CreateFilePathList(const wchar_t* pwzFolderPath, const wchar_t* pwzFileSpec, std::vector<std::wstring>& paths, bool toAddParent = true);
 	bool GetFilePathListAndIndex(const std::wstring& wstrPath, const wchar_t* pwzFileSpec, std::vector<std::wstring>& paths, size_t* nIndex);
 	
 	std::string LoadFileAsString(const wchar_t* pwzFilePath);
