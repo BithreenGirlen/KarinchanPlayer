@@ -8,6 +8,8 @@
 #include "win_filesystem.h"
 #include "path_utility.h"
 
+#include "native-ui/window_menu.h"
+
 CMainWindow::CMainWindow()
 {
 
@@ -18,7 +20,7 @@ CMainWindow::~CMainWindow()
 
 }
 
-bool CMainWindow::Create(HINSTANCE hInstance, const wchar_t* pwzWindowName, HICON hIcon)
+bool CMainWindow::Create(HINSTANCE hInstance, const wchar_t* windowName)
 {
 	WNDCLASSEXW wcex{};
 
@@ -31,12 +33,7 @@ bool CMainWindow::Create(HINSTANCE hInstance, const wchar_t* pwzWindowName, HICO
 	wcex.hInstance = hInstance;
 	wcex.hCursor = ::LoadCursor(nullptr, IDC_ARROW);
 	wcex.hbrBackground = ::GetSysColorBrush(COLOR_BTNFACE);
-	wcex.lpszClassName = m_pwzClassName;
-	if (hIcon != nullptr)
-	{
-		wcex.hIcon = hIcon;
-		wcex.hIconSm = hIcon;
-	}
+	wcex.lpszClassName = m_pClassName;
 
 	if (::RegisterClassExW(&wcex))
 	{
@@ -46,23 +43,13 @@ bool CMainWindow::Create(HINSTANCE hInstance, const wchar_t* pwzWindowName, HICO
 		int iWindowWidth = ::MulDiv(200, uiDpi, USER_DEFAULT_SCREEN_DPI);
 		int iWindowHeight = ::MulDiv(200, uiDpi, USER_DEFAULT_SCREEN_DPI);
 
-		if (pwzWindowName != nullptr)m_pwzDefaultWindowName = pwzWindowName;
-		m_hWnd = ::CreateWindowW(m_pwzClassName, m_pwzDefaultWindowName, WS_OVERLAPPEDWINDOW & ~WS_MINIMIZEBOX & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME,
+		if (windowName != nullptr)m_pDefaultWindowName = windowName;
+		m_hWnd = ::CreateWindowW(m_pClassName, m_pDefaultWindowName, WS_OVERLAPPEDWINDOW & ~WS_MINIMIZEBOX & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME,
 			CW_USEDEFAULT, CW_USEDEFAULT, iWindowWidth, iWindowHeight, nullptr, nullptr, hInstance, this);
 		if (m_hWnd != nullptr)
 		{
 			return true;
 		}
-		else
-		{
-			std::wstring wstrMessage = L"CreateWindowW failed; code: " + std::to_wstring(::GetLastError());
-			::MessageBoxW(nullptr, wstrMessage.c_str(), L"Error", MB_ICONERROR);
-		}
-	}
-	else
-	{
-		std::wstring wstrMessage = L"RegisterClassExW failed; code: " + std::to_wstring(::GetLastError());
-		::MessageBoxW(nullptr, wstrMessage.c_str(), L"Error", MB_ICONERROR);
 	}
 
 	return false;
@@ -82,14 +69,10 @@ int CMainWindow::MessageLoop()
 		}
 		else if (bRet == 0)
 		{
-			/*ループ終了*/
 			return static_cast<int>(msg.wParam);
 		}
 		else
 		{
-			/*ループ異常*/
-			std::wstring wstrMessage = L"GetMessageW failed; code: " + std::to_wstring(::GetLastError());
-			::MessageBoxW(nullptr, wstrMessage.c_str(), L"Error", MB_ICONERROR);
 			return -1;
 		}
 	}
@@ -179,7 +162,7 @@ LRESULT CMainWindow::OnDestroy()
 LRESULT CMainWindow::OnClose()
 {
 	::DestroyWindow(m_hWnd);
-	::UnregisterClassW(m_pwzClassName, m_hInstance);
+	::UnregisterClassW(m_pClassName, m_hInstance);
 
 	m_pKarinchanScenePlayer.reset();
 	m_pDxLibInit.reset();
@@ -305,17 +288,12 @@ LRESULT CMainWindow::OnCommand(WPARAM wParam, LPARAM lParam)
 
 			break;
 		default:
-			if (wmId >= Menu::kLabelStartIndex)
-			{
-				jumpToLabel(static_cast<size_t>(wmId - Menu::kLabelStartIndex));
-			}
 			break;
 		}
 	}
 	else
 	{
 		/*Controls*/
-
 	}
 
 	return 0;
@@ -441,12 +419,17 @@ LRESULT CMainWindow::OnRButtonUp(WPARAM wParam, LPARAM lParam)
 		{
 			for (size_t i = 0; i < labelData.size(); ++i)
 			{
-				::AppendMenuW(hPopupMenu, MF_STRING, Menu::kLabelStartIndex + i, labelData[i].wstrCaption.c_str());
+				::AppendMenuW(hPopupMenu, MF_STRING, i + 1, labelData[i].wstrCaption.c_str());
 			}
 
 			POINT point{};
 			::GetCursorPos(&point);
-			::TrackPopupMenu(hPopupMenu, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_LEFTBUTTON, point.x, point.y, 0, m_hWnd, nullptr);
+			BOOL menuIndex = ::TrackPopupMenu(hPopupMenu, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_LEFTBUTTON | TPM_NONOTIFY | TPM_RETURNCMD, point.x, point.y, 0, m_hWnd, nullptr);
+			if (menuIndex > 0)
+			{
+				size_t labelIndex = static_cast<size_t>(menuIndex - 1);
+				m_pKarinchanScenePlayer->jumpToLabel(labelIndex);
+			}
 			::DestroyMenu(hPopupMenu);
 		}
 	}
@@ -478,56 +461,28 @@ LRESULT CMainWindow::OnMButtonUp(WPARAM wParam, LPARAM lParam)
 /*操作欄作成*/
 void CMainWindow::InitialiseMenuBar()
 {
-	HMENU hMenuFile = nullptr;
-	HMENU hMenuSetting = nullptr;
-	HMENU hMenuBar = nullptr;
-	BOOL iRet = FALSE;
-
 	if (m_hMenuBar != nullptr)return;
 
-	hMenuFile = ::CreateMenu();
-	if (hMenuFile == nullptr)goto failed;
+	HMENU hMenu = window_menu::MenuBuilder(
+		{
+			{0, L"File", window_menu::MenuBuilder(
+				{
+					{Menu::kOpenFolder, L"Open folder"},
+				}).Get()
+			}
+		}
+	).Get();
 
-	iRet = ::AppendMenuA(hMenuFile, MF_STRING, Menu::kOpenFolder, "Open folder");
-	if (iRet == 0)goto failed;
-
-	//hMenuSetting = ::CreateMenu();
-	//if (hMenuSetting == nullptr)goto failed;
-
-	//iRet = ::AppendMenuA(hMenuSetting, MF_STRING, Menu::kAudioSetting, "Audio");
-	//if (iRet == 0)goto failed;
-	//iRet = ::AppendMenuA(hMenuSetting, MF_STRING, Menu::kFontSetting, "Font");
-	//if (iRet == 0)goto failed;
-
-	hMenuBar = ::CreateMenu();
-	if (hMenuBar == nullptr) goto failed;
-
-	iRet = ::AppendMenuA(hMenuBar, MF_POPUP, reinterpret_cast<UINT_PTR>(hMenuFile), "File");
-	if (iRet == 0)goto failed;
-	//iRet = ::AppendMenuA(hMenuBar, MF_POPUP, reinterpret_cast<UINT_PTR>(hMenuSetting), "Setting");
-	//if (iRet == 0)goto failed;
-
-	iRet = ::SetMenu(m_hWnd, hMenuBar);
-	if (iRet == 0)goto failed;
-
-	m_hMenuBar = hMenuBar;
-
-	return;
-
-failed:
-	std::wstring wstrMessage = L"Failed to create menu; code: " + std::to_wstring(::GetLastError());
-	::MessageBoxW(nullptr, wstrMessage.c_str(), L"Error", MB_ICONERROR);
-	if (hMenuFile != nullptr)
+	if (::IsMenu(hMenu))
 	{
-		::DestroyMenu(hMenuFile);
-	}
-	if (hMenuSetting != nullptr)
-	{
-		::DestroyMenu(hMenuSetting);
-	}
-	if (hMenuBar != nullptr)
-	{
-		::DestroyMenu(hMenuBar);
+		if (::SetMenu(m_hWnd, hMenu) != 0)
+		{
+			m_hMenuBar = hMenu;
+		}
+		else
+		{
+			::DestroyMenu(hMenu);
+		}
 	}
 }
 
@@ -542,7 +497,6 @@ void CMainWindow::MenuOnOpenFolder()
 		m_nFolderPathIndex = 0;
 		win_filesystem::GetFilePathListAndIndex(wstrSelectedFolderPath, nullptr, m_folderPaths, &m_nFolderPathIndex);
 	}
-
 }
 
 void CMainWindow::KeyOnNextFile()
@@ -584,18 +538,12 @@ bool CMainWindow::SetupScenario(const std::wstring& wstrFolderPath)
 	}
 	else
 	{
-		::SetWindowTextW(m_hWnd, m_pwzDefaultWindowName);
+		::SetWindowTextW(m_hWnd, m_pDefaultWindowName);
 	}
 
 	return bRet;
 }
 
-void CMainWindow::jumpToLabel(size_t nIndex)
-{
-	if (m_pKarinchanScenePlayer.get() == nullptr || !m_pKarinchanScenePlayer->hasScenarioData())return;
-
-	m_pKarinchanScenePlayer->jumpToLabel(nIndex);
-}
 /*表示形式変更*/
 void CMainWindow::ToggleWindowBorderStyle()
 {

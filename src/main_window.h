@@ -16,13 +16,13 @@ public:
 	CMainWindow();
 	~CMainWindow();
 
-	bool Create(HINSTANCE hInstance, const wchar_t* pwzWindowName = nullptr, HICON hIcon = nullptr);
+	bool Create(HINSTANCE hInstance, const wchar_t* windowName = nullptr);
 	int MessageLoop();
 
 	HWND GetHwnd()const { return m_hWnd; }
 private:
-	const wchar_t* m_pwzClassName = L"Karin-chan player window";
-	const wchar_t* m_pwzDefaultWindowName = L"Karin-chan player";
+	const wchar_t* m_pClassName = L"Karin-chan player window";
+	const wchar_t* m_pDefaultWindowName = L"Karin-chan player";
 
 	HINSTANCE m_hInstance = nullptr;
 	HWND m_hWnd = nullptr;
@@ -44,16 +44,15 @@ private:
 	LRESULT OnRButtonUp(WPARAM wParam, LPARAM lParam);
 	LRESULT OnMButtonUp(WPARAM wParam, LPARAM lParam);
 
-	enum Menu
+	struct Menu
 	{
-		kOpenFolder = 1,
-		kAudioSetting, kFontSetting,
-		kLabelStartIndex
+		enum
+		{
+			kOpenFolder = 1,
+			kAudioSetting, kFontSetting,
+		};
 	};
-	enum MenuBar
-	{
-		kFile, kSetting
-	};
+	struct MenuBar { enum { kFile, kSetting }; };
 
 	HMENU m_hMenuBar = nullptr;
 	bool m_isFramelessWindow = false;
@@ -78,7 +77,6 @@ private:
 	size_t m_nFolderPathIndex = 0;
 
 	bool SetupScenario(const std::wstring& wstrFolderPath);
-	void jumpToLabel(size_t nIndex);
 
 	void ToggleWindowBorderStyle();
 	void ResizeWindow();

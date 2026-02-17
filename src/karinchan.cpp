@@ -143,7 +143,7 @@ bool karinchan::ReadScenario(
 					if (iter != commandDatum.params.cend())
 					{
 						text_utility::ReplaceAll(iter->second, L"\"", L"");
-						textDatumBuffer.wstrVoiceFilePath = wstrFolderPath + L"\\" + path_utility::ExtractFileName(iter->second) + L".m4a";
+						textDatumBuffer.wstrVoiceFilePath.assign(wstrFolderPath).append(L"\\").append(path_utility::ExtractFileName(iter->second)).append(L".m4a");
 					}
 				}
 			}
@@ -156,7 +156,7 @@ bool karinchan::ReadScenario(
 					adv::ImageFileDatum imageFileDatum;
 					imageFileDatum.isAnimation = false;
 					text_utility::ReplaceAll(iter->second, L"\"", L"");
-					imageFileDatum.wstrFilePath = wstrFolderPath + L"\\" + path_utility::TruncateFilePath(iter->second);
+					imageFileDatum.wstrFilePath.assign(wstrFolderPath).append(L"\\").append(path_utility::TruncateFilePath(iter->second));
 					
 					imageFileData.push_back(std::move(imageFileDatum));
 					sceneDatumBuffer.nImageIndex = imageFileData.size() - 1;
@@ -173,7 +173,7 @@ bool karinchan::ReadScenario(
 					adv::ImageFileDatum imageFileDatum;
 					imageFileDatum.isAnimation = true;
 					text_utility::ReplaceAll(iter->second, L"\"", L"");
-					imageFileDatum.wstrFilePath = wstrFolderPath + L"\\" + path_utility::TruncateFilePath(iter->second);
+					imageFileDatum.wstrFilePath.assign(wstrFolderPath).append(L"\\").append(path_utility::TruncateFilePath(iter->second));
 
 					const auto &animIter = commandDatum.params.find(L"anim");
 					if (animIter == commandDatum.params.cend())continue;
@@ -187,7 +187,7 @@ bool karinchan::ReadScenario(
 					imageFileData.push_back(std::move(imageFileDatum));
 					sceneDatumBuffer.nImageIndex = imageFileData.size() - 1;
 
-					labelBuffer = animIter->first + L"_" + animIter->second;
+					labelBuffer.assign(animIter->first).append(L"_").append(animIter->second);
 				}
 			}
 		}

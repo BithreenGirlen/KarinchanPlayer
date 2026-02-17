@@ -19,6 +19,12 @@
     <Filter Include="Header File\dxlib_spine">
       <UniqueIdentifier>{e0e4b40f-326a-4d41-9cbe-29608700b5dd}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header File\native-ui">
+      <UniqueIdentifier>{a44686e4-a428-4a93-9c55-b51ad0f43852}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source File\native-ui">
+      <UniqueIdentifier>{c0fb50f8-2962-4de3-88f5-c9f4c9394fb7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\main.cpp">
@@ -68,6 +74,9 @@
     </ClCompile>
     <ClCompile Include="pch.cpp">
       <Filter>Source File</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\native-ui\window_menu.cpp">
+      <Filter>Source File\native-ui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -127,6 +136,9 @@
     </ClInclude>
     <ClInclude Include="pch.h">
       <Filter>Header File</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\native-ui\window_menu.h">
+      <Filter>Header File\native-ui</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
