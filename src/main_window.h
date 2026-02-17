@@ -78,7 +78,7 @@ private:
 	size_t m_nFolderPathIndex = 0;
 
 	bool SetupScenario(const std::wstring& wstrFolderPath);
-	void JumpToLabel(size_t nIndex);
+	void jumpToLabel(size_t nIndex);
 
 	void ToggleWindowBorderStyle();
 	void ResizeWindow();

@@ -1,15 +1,8 @@
 ﻿
+/* To calculate bounding box */
+#include <float.h>
 
 #include "dxlib_spine.h"
-
-#define SPINE_4_1_OR_LATER
-
-#ifdef _DEBUG
-#pragma comment(lib, "/spine-cpp-4.1/lib/x64-Debug/spine-cpp.lib")
-#else
-#pragma comment(lib, "/spine-cpp-4.1/lib/x64-Release/spine-cpp.lib")
-#endif // _DEBUG
-
 
 namespace spine
 {
@@ -25,14 +18,14 @@ CDxLibSpineDrawable::CDxLibSpineDrawable(spine::SkeletonData* pSkeletonData, spi
 
 	m_dxLibVertices.ensureCapacity(128);
 
-	skeleton = new spine::Skeleton(pSkeletonData);
+	m_skeleton = new spine::Skeleton(pSkeletonData);
 
 	if (pAnimationStateData == nullptr)
 	{
 		pAnimationStateData = new spine::AnimationStateData(pSkeletonData);
 		m_hasOwnAnimationStateData = true;
 	}
-	animationState = new spine::AnimationState(pAnimationStateData);
+	m_animationState = new spine::AnimationState(pAnimationStateData);
 
 	m_quadIndices.add(0);
 	m_quadIndices.add(1);
@@ -67,48 +60,80 @@ CDxLibSpineDrawable::CDxLibSpineDrawable(spine::SkeletonData* pSkeletonData, spi
 
 CDxLibSpineDrawable::~CDxLibSpineDrawable()
 {
-	if (animationState != nullptr)
+	if (m_animationState != nullptr)
 	{
 		if (m_hasOwnAnimationStateData)
 		{
-			delete animationState->getData();
+			delete m_animationState->getData();
 		}
 
-		delete animationState;
+		delete m_animationState;
 	}
-	if (skeleton != nullptr)
+	if (m_skeleton != nullptr)
 	{
-		delete skeleton;
+		delete m_skeleton;
 	}
 }
 
-void CDxLibSpineDrawable::Update(float fDelta)
+spine::Skeleton* CDxLibSpineDrawable::skeleton() const noexcept
 {
-	if (skeleton != nullptr && animationState != nullptr)
+	return m_skeleton;
+}
+
+spine::AnimationState* CDxLibSpineDrawable::animationState() const noexcept
+{
+	return m_animationState;
+}
+
+void CDxLibSpineDrawable::premultiplyAlpha(bool premultiplied) noexcept
+{
+	m_isAlphaPremultiplied = premultiplied;
+}
+
+bool CDxLibSpineDrawable::isAlphaPremultiplied() const noexcept
+{
+	return m_isAlphaPremultiplied;
+}
+
+void CDxLibSpineDrawable::forceBlendModeNormal(bool toForce) noexcept
+{
+	m_isToForceBlendModeNormal = toForce;
+}
+
+bool CDxLibSpineDrawable::isBlendModeNormalForced() const noexcept
+{
+	return m_isToForceBlendModeNormal;
+}
+
+void CDxLibSpineDrawable::update(float fDelta)
+{
+	if (m_skeleton != nullptr && m_animationState != nullptr)
 	{
-#ifndef SPINE_4_1_OR_LATER
-		skeleton->update(fDelta);
+		m_animationState->update(fDelta);
+		m_animationState->apply(*m_skeleton);
+
+		/* Spine 4.1 Does not have "Skeleton::update()" */
+#if !defined(SPINE_4_1_OR_LATER) || defined (SPINE_4_2_OR_LATER)
+		m_skeleton->update(fDelta);
 #endif
-		animationState->update(fDelta);
-		animationState->apply(*skeleton);
+
 #ifdef SPINE_4_2_OR_LATER
-		skeleton->update(fDelta);
-		skeleton->updateWorldTransform(spine::Physics::Physics_Update);
+		m_skeleton->updateWorldTransform(spine::Physics::Physics_Update);
 #else
-		skeleton->updateWorldTransform();
+		m_skeleton->updateWorldTransform();
 #endif
 	}
 }
 
-void CDxLibSpineDrawable::Draw()
+void CDxLibSpineDrawable::draw()
 {
-	if (skeleton == nullptr || animationState == nullptr)return;
+	if (m_skeleton == nullptr || m_animationState == nullptr)return;
 
-	if (skeleton->getColor().a == 0)return;
+	if (m_skeleton->getColor().a == 0)return;
 
-	for (size_t i = 0; i < skeleton->getSlots().size(); ++i)
+	for (size_t i = 0; i < m_skeleton->getSlots().size(); ++i)
 	{
-		spine::Slot& slot = *skeleton->getDrawOrder()[i];
+		spine::Slot& slot = *m_skeleton->getDrawOrder()[i];
 		spine::Attachment* pAttachment = slot.getAttachment();
 
 		if (pAttachment == nullptr || slot.getColor().a == 0 || !slot.getBone().isActive())
@@ -153,12 +178,12 @@ void CDxLibSpineDrawable::Draw()
 
 #ifdef SPINE_4_1_OR_LATER
 			spine::AtlasRegion* pAtlasRegion = static_cast<spine::AtlasRegion*>(pRegionAttachment->getRegion());
-			isAlphaPremultiplied = pAtlasRegion->page->pma;
+			m_isAlphaPremultiplied = pAtlasRegion->page->pma;
 			iDxLibTexture = (static_cast<int>(reinterpret_cast<unsigned long long>(pAtlasRegion->page->texture)));
 #else
 			spine::AtlasRegion* pAtlasRegion = static_cast<spine::AtlasRegion*>(pRegionAttachment->getRendererObject());
 #ifdef SPINE_4_0
-			isAlphaPremultiplied = pAtlasRegion->page->pma;
+			m_isAlphaPremultiplied = pAtlasRegion->page->pma;
 #endif
 			iDxLibTexture = (static_cast<int>(reinterpret_cast<unsigned long long>(pAtlasRegion->page->getRendererObject())));
 #endif // SPINE_4_1_OR_LATER
@@ -180,12 +205,12 @@ void CDxLibSpineDrawable::Draw()
 
 #ifdef SPINE_4_1_OR_LATER
 			spine::AtlasRegion* pAtlasRegion = static_cast<spine::AtlasRegion*>(pMeshAttachment->getRegion());
-			isAlphaPremultiplied = pAtlasRegion->page->pma;
+			m_isAlphaPremultiplied = pAtlasRegion->page->pma;
 			iDxLibTexture = (static_cast<int>(reinterpret_cast<unsigned long long>(pAtlasRegion->page->texture)));
 #else
 			spine::AtlasRegion* pAtlasRegion = static_cast<spine::AtlasRegion*>(pMeshAttachment->getRendererObject());
 #ifdef SPINE_4_0
-			isAlphaPremultiplied = pAtlasRegion->page->pma;
+			m_isAlphaPremultiplied = pAtlasRegion->page->pma;
 #endif
 			iDxLibTexture = (static_cast<int>(reinterpret_cast<unsigned long long>(pAtlasRegion->page->getRendererObject())));
 #endif // SPINE_4_1_OR_LATER
@@ -215,7 +240,7 @@ void CDxLibSpineDrawable::Draw()
 			pIndices = &m_clipper.getClippedTriangles();
 		}
 
-		const spine::Color& skeletonColor = skeleton->getColor();
+		const spine::Color& skeletonColor = m_skeleton->getColor();
 		const spine::Color& slotColor = slot.getColor();
 		const spine::Color tint
 		(
@@ -245,11 +270,11 @@ void CDxLibSpineDrawable::Draw()
 		}
 
 		int iDxLibBlendMode;
-		spine::BlendMode spineBlendMode = isToForceBlendModeNormal ? spine::BlendMode::BlendMode_Normal : slot.getData().getBlendMode();
+		spine::BlendMode spineBlendMode = m_isToForceBlendModeNormal ? spine::BlendMode::BlendMode_Normal : slot.getData().getBlendMode();
 		switch (spineBlendMode)
 		{
 		case spine::BlendMode_Additive:
-			iDxLibBlendMode = isAlphaPremultiplied ? DX_BLENDMODE_PMA_ADD : DX_BLENDMODE_SPINE_ADDITIVE;
+			iDxLibBlendMode = m_isAlphaPremultiplied ? DX_BLENDMODE_PMA_ADD : DX_BLENDMODE_SPINE_ADDITIVE;
 			break;
 		case spine::BlendMode_Multiply:
 			iDxLibBlendMode = DX_BLENDMODE_CUSTOM;
@@ -258,7 +283,7 @@ void CDxLibSpineDrawable::Draw()
 			iDxLibBlendMode = DX_BLENDMODE_SPINE_SCREEN;
 			break;
 		default:
-			iDxLibBlendMode = isAlphaPremultiplied ? DX_BLENDMODE_PMA_ALPHA : DX_BLENDMODE_SPINE_NORMAL;
+			iDxLibBlendMode = m_isAlphaPremultiplied ? DX_BLENDMODE_PMA_ALPHA : DX_BLENDMODE_SPINE_NORMAL;
 			break;
 		}
 
@@ -276,23 +301,87 @@ void CDxLibSpineDrawable::Draw()
 	m_clipper.clipEnd();
 }
 
-void CDxLibSpineDrawable::SetLeaveOutList(spine::Vector<spine::String>& list)
+void CDxLibSpineDrawable::setLeaveOutList(spine::Vector<spine::String>& list)
 {
 	/*There are some slots having mask or nuisance effect; exclude them from rendering.*/
 	m_leaveOutList.clearAndAddAll(list);
 }
 
-DxLib::FLOAT4 CDxLibSpineDrawable::GetBoundingBox() const
+DxLib::FLOAT4 CDxLibSpineDrawable::getBoundingBox() const
 {
 	DxLib::FLOAT4 boundingBox{};
 
-	if (skeleton != nullptr)
+	if (m_skeleton != nullptr)
 	{
 		spine::Vector<float> tempVertices;
-		skeleton->getBounds(boundingBox.x, boundingBox.y, boundingBox.z, boundingBox.w, tempVertices);
+		m_skeleton->getBounds(boundingBox.x, boundingBox.y, boundingBox.z, boundingBox.w, tempVertices);
 	}
 
 	return boundingBox;
+}
+
+DxLib::FLOAT4 CDxLibSpineDrawable::getBoundingBoxOfSlot(const char* slotName, size_t nameLength, bool* found) const
+{
+	float fMinX = FLT_MAX;
+	float fMinY = FLT_MAX;
+	float fMaxX = -FLT_MAX;
+	float fMaxY = -FLT_MAX;
+
+	if (m_skeleton != nullptr)
+	{
+		for (size_t i = 0; i < m_skeleton->getSlots().size(); ++i)
+		{
+			spine::Slot& slot = *m_skeleton->getDrawOrder()[i];
+			const spine::String& slotDataName = slot.getData().getName();
+			if (nameLength != slotDataName.length())continue;
+
+			if (::memcmp(slotDataName.buffer(), slotName, slotDataName.length()) == 0)
+			{
+				spine::Attachment* pAttachment = slot.getAttachment();
+				if (pAttachment != nullptr)
+				{
+					spine::Vector<float> tempVertices;
+					if (pAttachment->getRTTI().isExactly(spine::RegionAttachment::rtti))
+					{
+						spine::RegionAttachment* pRegionAttachment = static_cast<spine::RegionAttachment*>(pAttachment);
+
+						tempVertices.setSize(8, 0);
+#ifdef SPINE_4_1_OR_LATER
+						pRegionAttachment->computeWorldVertices(slot, tempVertices, 0, 2);
+#else
+						pRegionAttachment->computeWorldVertices(slot.getBone(), tempVertices, 0, 2);
+#endif
+					}
+					else if (pAttachment->getRTTI().isExactly(spine::MeshAttachment::rtti))
+					{
+						spine::MeshAttachment* pMeshAttachment = static_cast<spine::MeshAttachment*>(pAttachment);
+						tempVertices.setSize(pMeshAttachment->getWorldVerticesLength(), 0);
+						pMeshAttachment->computeWorldVertices(slot, 0, pMeshAttachment->getWorldVerticesLength(), tempVertices, 0, 2);
+					}
+					else
+					{
+						continue;
+					}
+
+					for (size_t ii = 0; ii < tempVertices.size(); ii += 2)
+					{
+						float fX = tempVertices[ii];
+						float fY = tempVertices[ii + 1LL];
+
+						fMinX = fMinX < fX ? fMinX : fX;
+						fMinY = fMinY < fY ? fMinY : fY;
+						fMaxX = fMaxX > fX ? fMaxX : fX;
+						fMaxY = fMaxY > fY ? fMaxY : fY;
+					}
+
+					if (found != nullptr)*found = true;
+					break;
+				}
+			}
+		}
+	}
+
+	return DxLib::FLOAT4{ fMinX, fMinY, fMaxX - fMinX, fMaxY - fMinY };
 }
 
 bool CDxLibSpineDrawable::IsToBeLeftOut(const spine::String& slotName)

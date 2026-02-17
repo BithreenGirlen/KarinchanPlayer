@@ -9,11 +9,17 @@ public:
 	CDxLibSpinePlayer();
 	~CDxLibSpinePlayer();
 
-	virtual void Redraw();
-private:
-	virtual void WorkOutDefaultScale();
-	virtual void WorkOutDefaultOffset();
+	void draw();
 
-	void SetTransformMatrix() const;
+	DxLib::MATRIX calculateTransformMatrix() const noexcept;
+	DxLib::FLOAT4 getCurrentBoundingOfSlot(const char* slotName, size_t nameLength) const;
+	template<size_t nameSize>
+	DxLib::FLOAT4 getCurrentBoundingOfSlot(const char(&slotName)[nameSize]) const
+	{
+		return getCurrentBoundingOfSlot(slotName, nameSize - 1);
+	}
+private:
+	void workOutDefaultScale() override;
+	void workOutDefaultOffset() override;
 };
 #endif // !DXLIB_SPINE_PLAYER_H_

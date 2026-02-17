@@ -14,11 +14,11 @@ namespace adv
 
 	struct ImageFileDatum
 	{
-		bool bAnimation = false;
+		bool isAnimation = false;
 
 		struct AnimationParams
 		{
-			bool bLoop = true;
+			bool loop = true;
 			unsigned short usIndex = 0;
 		};
 		AnimationParams animationParams;

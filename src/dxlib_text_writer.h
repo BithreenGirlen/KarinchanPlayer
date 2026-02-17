@@ -7,10 +7,10 @@ public:
 	CDxLibTextWriter();
 	~CDxLibTextWriter();
 
-	bool SetFont(const wchar_t* pwzFontFileName, int iFontSize, bool bBold, bool bItalic);
-	void Draw(const wchar_t* pwzText, unsigned long ulTextLength, int iPosX = 0, int iPosY = 0);
+	bool setFont(const wchar_t* fontFileName, int iFontSize, bool bold, bool italic);
+	void draw(const wchar_t* pText, unsigned long textLength, int iPosX = 0, int iPosY = 0) const;
 
-	void ToggleTextColour();
+	void toggleTextColour();
 private:
 	int m_iFontHandle = -1;
 
@@ -23,6 +23,6 @@ private:
 	unsigned int m_uiFillColour = Colours::kBlack;
 	unsigned int m_uiOutLineColour = Colours::kWhite;
 
-	bool DeleteFont();
+	bool deleteFont();
 };
 #endif // !DXLIB_TEXT_WRITER_H_

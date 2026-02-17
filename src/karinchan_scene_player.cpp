@@ -5,9 +5,24 @@
 #include "karinchan.h"
 #include "win_text.h"
 
+
+struct SDxLibRenderTarget
+{
+	SDxLibRenderTarget(int iGraphicHandle, bool toClear = true)
+	{
+		DxLib::SetDrawScreen(iGraphicHandle);
+		if (toClear)DxLib::ClearDrawScreen();
+	};
+	~SDxLibRenderTarget()
+	{
+		DxLib::SetDrawScreen(DX_SCREEN_BACK);
+	}
+};
+
+
 CKarinchanScenePlayer::CKarinchanScenePlayer()
 {
-	m_dxLibTextWriter.SetFont(L"游明朝", 28, true, true);
+	m_dxLibTextWriter.setFont(L"游明朝", 28, true, true);
 
 	m_pAudioPlayer = std::make_unique<CMfMediaPlayer>();
 }
@@ -17,36 +32,41 @@ CKarinchanScenePlayer::~CKarinchanScenePlayer()
 
 }
 /*台本読み込み*/
-bool CKarinchanScenePlayer::LoadScenario(const std::wstring& wstrFolderPath)
+bool CKarinchanScenePlayer::loadScenario(const std::wstring& folderPath)
 {
-	ClearScenarioData();
+	clearScenarioData();
 
 	std::vector<adv::ImageFileDatum> imageFileData;
 
-	karinchan::ReadScenario(wstrFolderPath, m_textData, imageFileData, m_sceneData, m_labelData);
+	karinchan::ReadScenario(folderPath, m_textData, imageFileData, m_sceneData, m_labelData);
 
 	bool hasAnimationBeenLoaded = false;
 	for (const auto& imageFileDatum : imageFileData)
 	{
-		if (imageFileDatum.bAnimation)
+		if (imageFileDatum.isAnimation)
 		{
 			if (!hasAnimationBeenLoaded)
 			{
 				std::vector<std::string> atlasPaths;
 				std::vector<std::string> skelPaths;
 
-				std::string strAtlasPath = win_text::NarrowUtf8(wstrFolderPath) + "\\animation.atlas.txt";
-				std::string strSkelPath = win_text::NarrowUtf8(wstrFolderPath) + "\\animation.json";
+				std::string atlasPath = win_text::NarrowUtf8(folderPath) + "\\animation.atlas.txt";
+				std::string skelPath = win_text::NarrowUtf8(folderPath) + "\\animation.json";
 
-				atlasPaths.push_back(std::move(strAtlasPath));
-				skelPaths.push_back(std::move(strSkelPath));
+				atlasPaths.push_back(std::move(atlasPath));
+				skelPaths.push_back(std::move(skelPath));
 
-				hasAnimationBeenLoaded = m_dxLibSpinePlayer.LoadSpineFromFile(atlasPaths, skelPaths, false);
+				hasAnimationBeenLoaded = m_dxLibSpinePlayer.loadSpineFromFile(atlasPaths, skelPaths, false);
+				if (hasAnimationBeenLoaded)
+				{
+					m_dxLibSpinePlayer.setOffset(0, 0);
+					m_dxLibSpinePlayer.setBaseSize(kDefaultWidth, kDefaultHeight);
+				}
 			}
 
 			SImageDatum imageDatum;
-			imageDatum.bAnimation = true;
-			imageDatum.animationParams.bLoop = imageFileDatum.animationParams.bLoop;
+			imageDatum.isAnimation = true;
+			imageDatum.animationParams.loop = imageFileDatum.animationParams.loop;
 			imageDatum.animationParams.usIndex = imageFileDatum.animationParams.usIndex;
 
 			m_imageData.push_back(std::move(imageDatum));
@@ -65,12 +85,12 @@ bool CKarinchanScenePlayer::LoadScenario(const std::wstring& wstrFolderPath)
 
 			DxLibImageHandle dxLibImageHandle(DxLib::LoadGraph(imageFileDatum.wstrFilePath.c_str()));
 
-			if (dxLibImageHandle.Get() != -1)
+			if (dxLibImageHandle.get() != -1)
 			{
 				m_imageHandles.push_back(std::move(dxLibImageHandle));
 
 				SImageDatum imageDatum;
-				imageDatum.bAnimation = false;
+				imageDatum.isAnimation = false;
 				imageDatum.stillParams.usIndex = static_cast<unsigned short>(m_imageHandles.size() - 1);
 				imageDatum.stillParams.fScale = fScale;
 
@@ -79,55 +99,55 @@ bool CKarinchanScenePlayer::LoadScenario(const std::wstring& wstrFolderPath)
 		}
 	}
 
-	WorkOutDefaultScale();
-	ResetScale();
+	workOutDefaultScale();
+	resetScale();
 
-	PrepareScene();
+	prepareScene();
 
-	m_spineClock.Restart();
+	m_spineClock.restart();
 
 	return !m_imageData.empty();
 }
 
-bool CKarinchanScenePlayer::HasScenarioData() const
+bool CKarinchanScenePlayer::hasScenarioData() const
 {
 	return !m_sceneData.empty();
 }
 
-void CKarinchanScenePlayer::Update()
+void CKarinchanScenePlayer::update()
 {
-	float fDelta = m_spineClock.GetElapsedTime();
-	const auto* p = GetCurrentImageDatum();
+	float fDelta = m_spineClock.getElapsedTime();
+	const auto* p = getCurrentImageDatum();
 	if (p != nullptr)
 	{
-		if (p->bAnimation)
+		if (p->isAnimation)
 		{
-			m_dxLibSpinePlayer.Update(fDelta);
+			m_dxLibSpinePlayer.update(fDelta);
 		}
 	}
 
-	CheckTextClock();
+	checkTextClock();
 
-	m_spineClock.Restart();
+	m_spineClock.restart();
 }
 
-void CKarinchanScenePlayer::Redraw()
+void CKarinchanScenePlayer::draw()
 {
-	DrawCurrentImage();
-	DrawFormattedText();
+	drawCurrentImage();
+	drawFormattedText();
 }
 
-void CKarinchanScenePlayer::GetStillImageSize(unsigned int* uiWidth, unsigned int* uiHeight) const
+void CKarinchanScenePlayer::getStillImageSize(unsigned int* width, unsigned int* height) const
 {
-	if (uiWidth != nullptr)*uiWidth = static_cast<unsigned int>(kDefaultWidth * m_fScale);
-	if (uiHeight != nullptr)*uiHeight = static_cast<unsigned int>(kDefaultHeight * m_fScale);
+	if (width != nullptr)*width = static_cast<unsigned int>(kDefaultWidth * m_fScale);
+	if (height != nullptr)*height = static_cast<unsigned int>(kDefaultHeight * m_fScale);
 }
 /*場面移行*/
-void CKarinchanScenePlayer::ShiftScene(bool bForward)
+void CKarinchanScenePlayer::shiftScene(bool forward)
 {
 	if (m_sceneData.empty())return;
 
-	if (bForward)
+	if (forward)
 	{
 		if (++m_nSceneIndex >= m_sceneData.size())
 		{
@@ -142,66 +162,73 @@ void CKarinchanScenePlayer::ShiftScene(bool bForward)
 		}
 	}
 
-	PrepareScene();
+	prepareScene();
 }
 /*最終場面是否*/
-bool CKarinchanScenePlayer::HasReachedLastScene() const
+bool CKarinchanScenePlayer::hasReachedLastScene() const
 {
 	return m_nSceneIndex == m_sceneData.size() - 1;
 }
 /*文字色切り替え*/
-void CKarinchanScenePlayer::ToggleTextColour()
+void CKarinchanScenePlayer::toggleTextColour()
 {
-	m_dxLibTextWriter.ToggleTextColour();
+	m_dxLibTextWriter.toggleTextColour();
 }
 /*尺度変更*/
-void CKarinchanScenePlayer::RescaleImage(bool bUpscale)
+void CKarinchanScenePlayer::rescaleImage(bool upscale)
 {
-	if (bUpscale)
+	if (upscale)
 	{
-		m_fScale += kfScaleFactor;
+		m_fScale += kScaleDelta;
 	}
 	else
 	{
-		m_fScale -= kfScaleFactor;
-		if (m_fScale < kfMinScale)m_fScale = kfMinScale;
+		m_fScale -= kScaleDelta;
+		if (m_fScale < kMinScale)m_fScale = kMinScale;
 	}
 
-	const auto& skeletonSize = m_dxLibSpinePlayer.GetBaseSize();
+	const auto& skeletonSize = m_dxLibSpinePlayer.getBaseSize();
 	float fSkeletonScaleToBe = kDefaultWidth * m_fScale / skeletonSize.x;
-	m_dxLibSpinePlayer.SetSkeletonScale(fSkeletonScaleToBe);
-
+	fSkeletonScaleToBe *= kDefaultSkeletonScale;
+	m_dxLibSpinePlayer.setSkeletonScale(fSkeletonScaleToBe);
 }
 /*時間尺度変更*/
-void CKarinchanScenePlayer::RescaleAnimationTime(bool bFaster)
+void CKarinchanScenePlayer::rescaleAnimationTime(short scroll)
 {
-	m_dxLibSpinePlayer.RescaleTime(bFaster);
+	static constexpr float kTimeScaleDelta = 0.05f;
+	const float scrollSign = scroll > 0 ? 1.f : -1.f;
+
+	float timeScale = m_dxLibSpinePlayer.getTimeScale() + kTimeScaleDelta * scrollSign;
+	timeScale = (std::max)(timeScale, 0.f);
+	m_dxLibSpinePlayer.setTimeScale(timeScale);
 }
 /*視点移動*/
-void CKarinchanScenePlayer::MoveViewPoint(int iX, int iY)
+void CKarinchanScenePlayer::addOffset(int iX, int iY)
 {
-	const auto* p = GetCurrentImageDatum();
-	if (p->bAnimation)
+	const auto* p = getCurrentImageDatum();
+	if (p == nullptr)return;
+
+	if (p->isAnimation)
 	{
-		m_dxLibSpinePlayer.MoveViewPoint(iX, iY);
+		m_dxLibSpinePlayer.addOffset(iX, iY);
 	}
 	else
 	{
-		m_fOffset.u += iX;
-		m_fOffset.v += iY;
+		m_fOffset.u += iX * m_fScale;
+		m_fOffset.v += iY * m_fScale;
 
 		const auto AdjustViewForStill = [this]()
 			-> void
 			{
-				int iClientWidth = 0;
-				int iClientHeight = 0;
-				DxLib::GetScreenState(&iClientWidth, &iClientHeight, nullptr);
+				int iTargetWidth = 0;
+				int iTargetHeight = 0;
+				DxLib::GetDrawScreenSize(&iTargetWidth, &iTargetHeight);
 
 				float fScaledWidth = kDefaultWidth * m_fScale;
 				float fScaledHeight = kDefaultHeight * m_fScale;
 
-				float fMaxOffsetX = (fScaledWidth - iClientWidth) / m_fScale;
-				float fMaxOffsetY = (fScaledHeight - iClientHeight) / m_fScale;
+				float fMaxOffsetX = fScaledWidth - iTargetWidth;
+				float fMaxOffsetY = fScaledHeight - iTargetHeight;
 
 				m_fOffset.u = (std::max)(-fMaxOffsetX, m_fOffset.u);
 				m_fOffset.v = (std::max)(-fMaxOffsetY, m_fOffset.v);
@@ -214,20 +241,25 @@ void CKarinchanScenePlayer::MoveViewPoint(int iX, int iY)
 	}
 }
 /*尺度・位置初期化*/
-void CKarinchanScenePlayer::ResetScale()
+void CKarinchanScenePlayer::resetScale()
 {
 	m_fScale = m_fDefaultScale;
 	m_fOffset = {};
 
-	ResetSpinePlayerScale();
+	resetSpinePlayerScale();
 }
 
-std::vector<adv::LabelDatum>& CKarinchanScenePlayer::GetLabelData()
+void CKarinchanScenePlayer::onResize(int width, int height)
+{
+	m_renderTexture = DxLib::MakeScreen(width, height, 1);
+}
+
+const std::vector<adv::LabelDatum>& CKarinchanScenePlayer::getLabelData() const
 {
 	return m_labelData;
 }
 
-bool CKarinchanScenePlayer::JumpToLabel(size_t nLabelIndex)
+bool CKarinchanScenePlayer::jumpToLabel(size_t nLabelIndex)
 {
 	if (nLabelIndex < m_labelData.size())
 	{
@@ -236,7 +268,7 @@ bool CKarinchanScenePlayer::JumpToLabel(size_t nLabelIndex)
 		if (labelDatum.nSceneIndex < m_sceneData.size())
 		{
 			m_nSceneIndex = labelDatum.nSceneIndex;
-			PrepareScene();
+			prepareScene();
 
 			return true;
 		}
@@ -244,7 +276,7 @@ bool CKarinchanScenePlayer::JumpToLabel(size_t nLabelIndex)
 	return false;
 }
 /*台本データ消去*/
-void CKarinchanScenePlayer::ClearScenarioData()
+void CKarinchanScenePlayer::clearScenarioData()
 {
 	m_textData.clear();
 
@@ -255,12 +287,12 @@ void CKarinchanScenePlayer::ClearScenarioData()
 	m_imageHandles.clear();
 
 	m_wstrFormattedText.clear();
-	m_usLastAnimationIndex = 0;
+	m_lastAnimationIndex = 0;
 
 	m_labelData.clear();
 }
 /*標準尺度算出*/
-void CKarinchanScenePlayer::WorkOutDefaultScale()
+void CKarinchanScenePlayer::workOutDefaultScale()
 {
 	m_fDefaultScale = 1.f;
 
@@ -296,7 +328,7 @@ void CKarinchanScenePlayer::WorkOutDefaultScale()
 	}
 }
 /*現在の画像データ取り出し*/
-CKarinchanScenePlayer::SImageDatum* CKarinchanScenePlayer::GetCurrentImageDatum()
+CKarinchanScenePlayer::SImageDatum* CKarinchanScenePlayer::getCurrentImageDatum()
 {
 	if (m_nSceneIndex < m_sceneData.size())
 	{
@@ -309,50 +341,54 @@ CKarinchanScenePlayer::SImageDatum* CKarinchanScenePlayer::GetCurrentImageDatum(
 	return nullptr;
 }
 /*場面描画事前準備*/
-void CKarinchanScenePlayer::PrepareScene()
+void CKarinchanScenePlayer::prepareScene()
 {
-	PrepareText();
-	CheckAnimationTrack();
+	prepareText();
+	checkAnimationTrack();
 }
 /*動作切り替わり場面か確認*/
-void CKarinchanScenePlayer::CheckAnimationTrack()
+void CKarinchanScenePlayer::checkAnimationTrack()
 {
-	const auto* p = GetCurrentImageDatum();
+	const auto* p = getCurrentImageDatum();
 	if (p != nullptr)
 	{
-		if (p->bAnimation)
+		if (p->isAnimation)
 		{
-			if (m_usLastAnimationIndex != p->animationParams.usIndex)
+			if (m_lastAnimationIndex != p->animationParams.usIndex)
 			{
-				m_usLastAnimationIndex = p->animationParams.usIndex;
-				m_dxLibSpinePlayer.SetAnimationByIndex(m_usLastAnimationIndex - 1ULL);
+				m_lastAnimationIndex = p->animationParams.usIndex;
+				m_dxLibSpinePlayer.setAnimationByIndex(m_lastAnimationIndex - 1ULL);
 			}
 		}
 		else
 		{
-			m_usLastAnimationIndex = 0;
+			m_lastAnimationIndex = 0;
 		}
 	}
 }
 /*文章作成・附随音声再生*/
-void CKarinchanScenePlayer::PrepareText()
+void CKarinchanScenePlayer::prepareText()
 {
 	if (m_nSceneIndex < m_sceneData.size())
 	{
 		size_t nTextIndex = m_sceneData[m_nSceneIndex].nTextIndex;
 		if (nTextIndex < m_textData.size())
 		{
+			m_wstrFormattedText.clear();
 			std::wstring& wstr = m_wstrFormattedText;
 			const auto& t = m_textData[nTextIndex];
 
-			wstr = t.wstrName + L"\n" + t.wstrText;
+			wstr += t.wstrName + L"\n" + t.wstrText;
 			const int nCountToBreak = 23;
 			for (size_t i = t.wstrName.size() + 2 + nCountToBreak; i < wstr.size(); i += nCountToBreak)
 			{
 				wstr.insert(i, L"\n");
 			}
-			if (wstr.back() != L'\n')wstr += L"\n";
-			wstr += std::to_wstring(nTextIndex + 1) + L"/" + std::to_wstring(m_textData.size());
+			if (wstr.back() != L'\n')wstr += L'\n';
+
+			wchar_t sBuffer[16]{};
+			swprintf_s(sBuffer, L"%zu/%zu", nTextIndex + 1, m_textData.size());
+			wstr += sBuffer;
 
 			if (!t.wstrVoiceFilePath.empty())
 			{
@@ -362,84 +398,95 @@ void CKarinchanScenePlayer::PrepareText()
 				}
 			}
 
-			m_textClock.Restart();
+			m_textClock.restart();
 		}
 	}
 }
 /*文章表示経過時間確認*/
-void CKarinchanScenePlayer::CheckTextClock()
+void CKarinchanScenePlayer::checkTextClock()
 {
-	float fElapsed = m_textClock.GetElapsedTime();
+	float fElapsed = m_textClock.getElapsedTime();
 	if (::isgreaterequal(fElapsed, 3.f))
 	{
-		m_textClock.Restart();
+		m_textClock.restart();
 
 		if (m_pAudioPlayer.get() != nullptr && m_pAudioPlayer->IsEnded())
 		{
-			if (!HasReachedLastScene())
+			if (!hasReachedLastScene())
 			{
-				ShiftScene(true);
+				shiftScene(true);
 			}
 		}
 	}
 }
 
-void CKarinchanScenePlayer::DrawCurrentImage()
+void CKarinchanScenePlayer::drawCurrentImage()
 {
-	const auto* p = GetCurrentImageDatum();
-	if (p != nullptr)
+	if (!m_renderTexture.empty())
 	{
-		if (p->bAnimation)
+		const auto* p = getCurrentImageDatum();
+		if (p != nullptr)
 		{
-			m_dxLibSpinePlayer.Redraw();
-		}
-		else
-		{
-			size_t nImageIndex = p->stillParams.usIndex;
-			if (nImageIndex < m_imageHandles.size())
+			SDxLibRenderTarget renderTargetScope(m_renderTexture.get());
+			if (p->isAnimation)
 			{
-				const auto& imageHandle = m_imageHandles[nImageIndex];
-
-				int iGraphWidth = 0;
-				int iGraphsHeight = 0;
-				int iRet = DxLib::GetGraphSize(imageHandle.Get(), &iGraphWidth, &iGraphsHeight);
-				if (iRet == -1)return;
-
-				float fScale = p->stillParams.fScale * m_fScale;
-				int iClientWidth = 0;
-				int iClientHeight = 0;
-				DxLib::GetScreenState(&iClientWidth, &iClientHeight, nullptr);
-				float fX = (iGraphWidth * fScale - iClientWidth) / 2 + m_fOffset.u / 2;
-				float fY = (iGraphsHeight * fScale - iClientHeight) / 2 + m_fOffset.v / 2;
-
-				DxLib::MATRIX matrix = DxLib::MGetScale(DxLib::VGet(fScale, fScale, 1.f));
-				DxLib::MATRIX tranlateMatrix = DxLib::MGetTranslate(DxLib::VGet(-fX, -fY, 0.f));
-				matrix = DxLib::MMult(matrix, tranlateMatrix);
-
+				DxLib::MATRIX matrix = m_dxLibSpinePlayer.calculateTransformMatrix();
 				DxLib::SetTransformTo2D(&matrix);
 
-				DxLib::DrawGraph(0, 0, imageHandle.Get(), FALSE);
+				m_dxLibSpinePlayer.draw();
 
 				DxLib::ResetTransformTo2D();
 			}
+			else
+			{
+				size_t nImageIndex = p->stillParams.usIndex;
+				if (nImageIndex < m_imageHandles.size())
+				{
+					const auto& imageHandle = m_imageHandles[nImageIndex];
+					const float fScale = p->stillParams.fScale * m_fScale;
+					DxLib::MATRIX matrix = calculateTransformMatrixForStill(imageHandle.get(), p->stillParams.fScale * m_fScale);
+					DxLib::SetTransformTo2D(&matrix);
+
+					DxLib::DrawGraph(0, 0, imageHandle.get(), FALSE);
+
+					DxLib::ResetTransformTo2D();
+				}
+			}
 		}
+		DxLib::SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 255);
+		DxLib::DrawGraph(0, 0, m_renderTexture.get(), TRUE);
 	}
 }
 
-void CKarinchanScenePlayer::DrawFormattedText()
+void CKarinchanScenePlayer::drawFormattedText()
 {
-	if (m_bTextShown)
+	if (m_isTextShown)
 	{
-		m_dxLibTextWriter.Draw(m_wstrFormattedText.c_str(), static_cast<unsigned long>(m_wstrFormattedText.size()));
+		m_dxLibTextWriter.draw(m_wstrFormattedText.c_str(), static_cast<unsigned long>(m_wstrFormattedText.size()));
 	}
 }
 
-void CKarinchanScenePlayer::ResetSpinePlayerScale()
+DxLib::MATRIX CKarinchanScenePlayer::calculateTransformMatrixForStill(const int imageHandle, const float fScale) const
 {
-	m_dxLibSpinePlayer.ResetScale();
+	int iGraphWidth = 0;
+	int iGraphsHeight = 0;
+	int iRet = DxLib::GetGraphSize(imageHandle, &iGraphWidth, &iGraphsHeight);
+	if (iRet == -1)return DxLib::MGetIdent();
 
-	float fScaleX = 1.f;
-	float fScaleY = 1.f;
-	m_dxLibSpinePlayer.FindRootBoneScale(&fScaleX, &fScaleY);
-	m_dxLibSpinePlayer.SetZoom(1.f / fScaleX);
+	int iTargetWidth = 0;
+	int iTargetHeight = 0;
+	DxLib::GetDrawScreenSize(&iTargetWidth, &iTargetHeight);
+	float fX = (iGraphWidth * fScale - iTargetWidth) / 2 + m_fOffset.u / 2;
+	float fY = (iGraphsHeight * fScale - iTargetHeight) / 2 + m_fOffset.v / 2;
+
+	DxLib::MATRIX matrix = DxLib::MGetScale(DxLib::VGet(fScale, fScale, 1.f));
+	DxLib::MATRIX tranlateMatrix = DxLib::MGetTranslate(DxLib::VGet(-fX, -fY, 0.f));
+	return DxLib::MMult(matrix, tranlateMatrix);
+}
+
+void CKarinchanScenePlayer::resetSpinePlayerScale()
+{
+	m_dxLibSpinePlayer.resetScale();
+	m_dxLibSpinePlayer.setSkeletonScale(m_fScale * kDefaultSkeletonScale);
+	m_dxLibSpinePlayer.setCanvasScale(m_fScale * kDefaultSkeletonScale);
 }

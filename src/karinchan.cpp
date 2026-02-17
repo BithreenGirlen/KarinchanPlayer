@@ -154,7 +154,7 @@ bool karinchan::ReadScenario(
 				if (iter != commandDatum.params.cend())
 				{
 					adv::ImageFileDatum imageFileDatum;
-					imageFileDatum.bAnimation = false;
+					imageFileDatum.isAnimation = false;
 					text_utility::ReplaceAll(iter->second, L"\"", L"");
 					imageFileDatum.wstrFilePath = wstrFolderPath + L"\\" + path_utility::TruncateFilePath(iter->second);
 					
@@ -171,7 +171,7 @@ bool karinchan::ReadScenario(
 				if (iter != commandDatum.params.cend())
 				{
 					adv::ImageFileDatum imageFileDatum;
-					imageFileDatum.bAnimation = true;
+					imageFileDatum.isAnimation = true;
 					text_utility::ReplaceAll(iter->second, L"\"", L"");
 					imageFileDatum.wstrFilePath = wstrFolderPath + L"\\" + path_utility::TruncateFilePath(iter->second);
 
@@ -182,7 +182,7 @@ bool karinchan::ReadScenario(
 
 					iter = commandDatum.params.find(L"loop");
 					if (iter == commandDatum.params.cend())continue;
-					imageFileDatum.animationParams.bLoop = iter->second == L"1";
+					imageFileDatum.animationParams.loop = iter->second == L"1";
 
 					imageFileData.push_back(std::move(imageFileDatum));
 					sceneDatumBuffer.nImageIndex = imageFileData.size() - 1;

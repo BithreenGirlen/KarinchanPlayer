@@ -12,22 +12,22 @@ CDxLibTextWriter::CDxLibTextWriter()
 
 CDxLibTextWriter::~CDxLibTextWriter()
 {
-    DeleteFont();
+    deleteFont();
 }
 
-bool CDxLibTextWriter::SetFont(const wchar_t* pwzFontFileName, int iFontSize, bool bBold, bool bItalic)
+bool CDxLibTextWriter::setFont(const wchar_t* fontFileName, int iFontSize, bool bold, bool italic)
 {
-    DeleteFont();
+    deleteFont();
 
     m_iFontHandle = DxLib::CreateFontToHandle
     (
-        pwzFontFileName,
+        fontFileName,
         iFontSize > 0 ? iFontSize : DEFAULT_FONT_SIZE,
-        bBold ? DEFAULT_FONT_THICKNESS: DEFAULT_FONT_THICKNESS / 2,
+        bold ? DEFAULT_FONT_THICKNESS: DEFAULT_FONT_THICKNESS / 2,
         DX_FONTTYPE_ANTIALIASING_EDGE_4X4,
         DX_CHARSET_UTF8,
         DEFAULT_FONT_EDGESIZE,
-        bItalic ? TRUE : FALSE
+        italic ? TRUE : FALSE
     );
 
     if (m_iFontHandle != -1)
@@ -38,22 +38,21 @@ bool CDxLibTextWriter::SetFont(const wchar_t* pwzFontFileName, int iFontSize, bo
     return m_iFontHandle != -1;
 }
 
-void CDxLibTextWriter::Draw(const wchar_t* pwzText, unsigned long ulTextLength, int iPosX, int iPosY)
+void CDxLibTextWriter::draw(const wchar_t* pText, unsigned long textLength, int iPosX, int iPosY) const
 {
     if (m_iFontHandle != -1)
     {
-        DxLib::SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 255);
-        DxLib::DrawNStringToHandle(iPosX + 4, iPosY + 4, pwzText, ulTextLength, m_uiFillColour, m_iFontHandle, m_uiOutLineColour);
+        DxLib::DrawNStringToHandle(iPosX + 4, iPosY + 4, pText, textLength, m_uiFillColour, m_iFontHandle, m_uiOutLineColour);
     }
 }
 
-void CDxLibTextWriter::ToggleTextColour()
+void CDxLibTextWriter::toggleTextColour()
 {
     m_uiFillColour = m_uiFillColour == Colours::kBlack ? Colours::kWhite : Colours::kBlack;
     m_uiOutLineColour = m_uiOutLineColour == Colours::kBlack ? Colours::kWhite : Colours::kBlack;
 }
 
-bool CDxLibTextWriter::DeleteFont()
+bool CDxLibTextWriter::deleteFont()
 {
     if (m_iFontHandle != -1)
     {
@@ -62,5 +61,6 @@ bool CDxLibTextWriter::DeleteFont()
 
         m_iFontHandle = -1;
     }
+
     return true;
 }

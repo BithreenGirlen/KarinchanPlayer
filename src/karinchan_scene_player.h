@@ -18,45 +18,48 @@ public:
 	CKarinchanScenePlayer();
 	~CKarinchanScenePlayer();
 
-	bool LoadScenario(const std::wstring& wstrFolderPath);
-	bool HasScenarioData() const;
+	bool loadScenario(const std::wstring& folderPath);
+	bool hasScenarioData() const;
 
-	void Update();
-	void Redraw();
+	void update();
+	void draw();
 
-	void GetStillImageSize(unsigned int* uiWidth, unsigned int* uiHeight) const;
+	void getStillImageSize(unsigned int* width, unsigned int* height) const;
 
-	void ShiftScene(bool bForward);
-	bool HasReachedLastScene() const;
+	void shiftScene(bool forward);
+	bool hasReachedLastScene() const;
 
-	bool GetTextVisibility()const { return m_bTextShown; }
-	void SetTextVisibility(bool bShown) { m_bTextShown = bShown; }
-	void ToggleTextColour();
+	bool isTextShown()const { return m_isTextShown; }
+	void setTextVisibility(bool isShown) { m_isTextShown = isShown; }
+	void toggleTextColour();
 
-	void RescaleImage(bool bUpscale);
-	void RescaleAnimationTime(bool bFaster);
+	void rescaleImage(bool upscale);
+	void rescaleAnimationTime(short scroll);
 
-	void MoveViewPoint(int iX, int iY);
+	void addOffset(int iX, int iY);
 
-	void ResetScale();
+	void resetScale();
 
-	std::vector<adv::LabelDatum>& GetLabelData();
-	bool JumpToLabel(size_t nLabelIndex);
+	void onResize(int width, int height);
+
+	const std::vector<adv::LabelDatum>& getLabelData() const;
+	bool jumpToLabel(size_t nLabelIndex);
 private:
 	using DxLibImageHandle = DxLibHandle<&DxLib::DeleteGraph>;
 	static constexpr int kDefaultWidth = 1920;
 	static constexpr int kDefaultHeight = 1080;
 
-	static constexpr float kfScaleFactor = 0.025f;
-	static constexpr float kfMinScale = 0.15f;
+	static constexpr float kScaleDelta = 0.025f;
+	static constexpr float kMinScale = 0.15f;
+	static constexpr float kDefaultSkeletonScale = 1.5f;
 
 	struct SImageDatum
 	{
-		bool bAnimation = false;
+		bool isAnimation = false;
 
 		struct AnimationParams
 		{
-			bool bLoop = true;
+			bool loop = true;
 			unsigned short usIndex = 0;
 		};
 		AnimationParams animationParams;
@@ -79,37 +82,41 @@ private:
 	std::vector<adv::LabelDatum> m_labelData;
 
 	CDxLibSpinePlayer m_dxLibSpinePlayer;
+	DxLibImageHandle m_renderTexture = { DxLibImageHandle(-1) };
+
 	CDxLibClock m_spineClock;
 
 	CDxLibTextWriter m_dxLibTextWriter;
 	CDxLibClock m_textClock;
 	std::unique_ptr<CMfMediaPlayer> m_pAudioPlayer;
-	bool m_bTextShown = true;
+	bool m_isTextShown = true;
 
 	std::wstring m_wstrFormattedText;
-	unsigned short m_usLastAnimationIndex = 0;
+	unsigned short m_lastAnimationIndex = 0;
 
 	float m_fDefaultScale = 1.f;
 
 	float m_fScale = 1.f;
 	DxLib::FLOAT2 m_fOffset{};
 
-	void ClearScenarioData();
-	void WorkOutDefaultScale();
+	void clearScenarioData();
+	void workOutDefaultScale();
 
-	SImageDatum* GetCurrentImageDatum();
+	SImageDatum* getCurrentImageDatum();
 
-	void PrepareScene();
+	void prepareScene();
 
-	void CheckAnimationTrack();
-	void PrepareText();
+	void checkAnimationTrack();
+	void prepareText();
 
-	void CheckTextClock();
+	void checkTextClock();
 
-	void DrawCurrentImage();
-	void DrawFormattedText();
+	void drawCurrentImage();
+	void drawFormattedText();
 
-	void ResetSpinePlayerScale();
+	DxLib::MATRIX calculateTransformMatrixForStill(const int imageHandle, const float fScale) const;
+
+	void resetSpinePlayerScale();
 };
 
 #endif // !KARINCHAN_SCENE_PLAYER_H_

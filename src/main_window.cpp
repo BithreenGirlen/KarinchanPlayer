@@ -192,13 +192,13 @@ LRESULT CMainWindow::OnPaint()
 	PAINTSTRUCT ps;
 	HDC hdc = ::BeginPaint(m_hWnd, &ps);
 
-	if (m_pKarinchanScenePlayer.get() != nullptr && m_pKarinchanScenePlayer->HasScenarioData())
+	if (m_pKarinchanScenePlayer.get() != nullptr && m_pKarinchanScenePlayer->hasScenarioData())
 	{
-		m_pKarinchanScenePlayer->Update();
+		m_pKarinchanScenePlayer->update();
 
 		DxLib::ClearDrawScreen();
 
-		m_pKarinchanScenePlayer->Redraw();
+		m_pKarinchanScenePlayer->draw();
 
 		DxLib::ScreenFlip();
 
@@ -222,6 +222,12 @@ LRESULT CMainWindow::OnSize(WPARAM wParam, LPARAM lParam)
 	int iGraphHeight = iClientHeight < iDesktopHeight ? iClientHeight : iDesktopHeight;
 
 	DxLib::SetGraphMode(iGraphWidth, iGraphHeight, 32);
+
+	if (m_pKarinchanScenePlayer != nullptr)
+	{
+		m_pKarinchanScenePlayer->onResize(iGraphWidth, iGraphHeight);
+	}
+
 	return 0;
 }
 /*WM_KEYDOWN*/
@@ -232,16 +238,16 @@ LRESULT CMainWindow::OnKeyDown(WPARAM wParam, LPARAM lParam)
 	case VK_RIGHT:
 		if (m_pKarinchanScenePlayer.get() != nullptr)
 		{
-			if (!m_pKarinchanScenePlayer->HasReachedLastScene())
+			if (!m_pKarinchanScenePlayer->hasReachedLastScene())
 			{
-				m_pKarinchanScenePlayer->ShiftScene(true);
+				m_pKarinchanScenePlayer->shiftScene(true);
 			}
 		}
 		break;
 	case VK_LEFT:
 		if (m_pKarinchanScenePlayer.get() != nullptr)
 		{
-			m_pKarinchanScenePlayer->ShiftScene(false);
+			m_pKarinchanScenePlayer->shiftScene(false);
 		}
 		break;
 	default:
@@ -267,13 +273,13 @@ LRESULT CMainWindow::OnKeyUp(WPARAM wParam, LPARAM lParam)
 	case 'C':
 		if (m_pKarinchanScenePlayer.get() != nullptr)
 		{
-			m_pKarinchanScenePlayer->ToggleTextColour();
+			m_pKarinchanScenePlayer->toggleTextColour();
 		}
 		break;
 	case 'T':
 		if (m_pKarinchanScenePlayer.get() != nullptr)
 		{
-			m_pKarinchanScenePlayer->SetTextVisibility(!m_pKarinchanScenePlayer->GetTextVisibility());
+			m_pKarinchanScenePlayer->setTextVisibility(!m_pKarinchanScenePlayer->isTextShown());
 		}
 		break;
 	}
@@ -301,7 +307,7 @@ LRESULT CMainWindow::OnCommand(WPARAM wParam, LPARAM lParam)
 		default:
 			if (wmId >= Menu::kLabelStartIndex)
 			{
-				JumpToLabel(static_cast<size_t>(wmId - Menu::kLabelStartIndex));
+				jumpToLabel(static_cast<size_t>(wmId - Menu::kLabelStartIndex));
 			}
 			break;
 		}
@@ -329,7 +335,7 @@ LRESULT CMainWindow::OnMouseMove(WPARAM wParam, LPARAM lParam)
 
 		if (m_pKarinchanScenePlayer.get() != nullptr && m_hasLeftBeenDragged)
 		{
-			m_pKarinchanScenePlayer->MoveViewPoint(iX, iY);
+			m_pKarinchanScenePlayer->addOffset(iX, iY);
 		}
 
 		m_cursorPos = pt;
@@ -348,14 +354,14 @@ LRESULT CMainWindow::OnMouseWheel(WPARAM wParam, LPARAM lParam)
 	{
 		if (m_pKarinchanScenePlayer.get() != nullptr)
 		{
-			m_pKarinchanScenePlayer->RescaleAnimationTime(iScroll > 0);
+			m_pKarinchanScenePlayer->rescaleAnimationTime(iScroll > 0);
 		}
 	}
 	else if (usKey == MK_RBUTTON)
 	{
 		if (m_pKarinchanScenePlayer.get() != nullptr)
 		{
-			m_pKarinchanScenePlayer->ShiftScene(iScroll > 0);
+			m_pKarinchanScenePlayer->shiftScene(iScroll > 0);
 		}
 
 		m_wasRightCombinated = true;
@@ -364,7 +370,7 @@ LRESULT CMainWindow::OnMouseWheel(WPARAM wParam, LPARAM lParam)
 	{
 		if (m_pKarinchanScenePlayer.get() != nullptr)
 		{
-			m_pKarinchanScenePlayer->RescaleImage(iScroll > 0);
+			m_pKarinchanScenePlayer->rescaleImage(iScroll > 0);
 			if (!(usKey & MK_CONTROL))
 			{
 				ResizeWindow();
@@ -422,12 +428,12 @@ LRESULT CMainWindow::OnRButtonUp(WPARAM wParam, LPARAM lParam)
 		return 0;
 	}
 
-	if (m_pKarinchanScenePlayer.get() == nullptr || !m_pKarinchanScenePlayer->HasScenarioData())return 0;
+	if (m_pKarinchanScenePlayer.get() == nullptr || !m_pKarinchanScenePlayer->hasScenarioData())return 0;
 
 	WORD usKey = LOWORD(wParam);
 	if (usKey == 0)
 	{
-		const auto& labelData = m_pKarinchanScenePlayer->GetLabelData();
+		const auto& labelData = m_pKarinchanScenePlayer->getLabelData();
 		if (labelData.empty())return 0;
 
 		HMENU hPopupMenu = ::CreatePopupMenu();
@@ -454,9 +460,9 @@ LRESULT CMainWindow::OnMButtonUp(WPARAM wParam, LPARAM lParam)
 
 	if (usKey == 0)
 	{
-		if (m_pKarinchanScenePlayer.get() != nullptr && m_pKarinchanScenePlayer->HasScenarioData())
+		if (m_pKarinchanScenePlayer.get() != nullptr && m_pKarinchanScenePlayer->hasScenarioData())
 		{
-			m_pKarinchanScenePlayer->ResetScale();
+			m_pKarinchanScenePlayer->resetScale();
 			ResizeWindow();
 		}
 	}
@@ -564,7 +570,7 @@ bool CMainWindow::SetupScenario(const std::wstring& wstrFolderPath)
 	bool bRet = false;
 	if (m_pKarinchanScenePlayer.get() != nullptr)
 	{
-		bRet = m_pKarinchanScenePlayer->LoadScenario(wstrFolderPath);
+		bRet = m_pKarinchanScenePlayer->loadScenario(wstrFolderPath);
 		if (bRet)
 		{
 			ResizeWindow();
@@ -584,16 +590,16 @@ bool CMainWindow::SetupScenario(const std::wstring& wstrFolderPath)
 	return bRet;
 }
 
-void CMainWindow::JumpToLabel(size_t nIndex)
+void CMainWindow::jumpToLabel(size_t nIndex)
 {
-	if (m_pKarinchanScenePlayer.get() == nullptr || !m_pKarinchanScenePlayer->HasScenarioData())return;
+	if (m_pKarinchanScenePlayer.get() == nullptr || !m_pKarinchanScenePlayer->hasScenarioData())return;
 
-	m_pKarinchanScenePlayer->JumpToLabel(nIndex);
+	m_pKarinchanScenePlayer->jumpToLabel(nIndex);
 }
 /*表示形式変更*/
 void CMainWindow::ToggleWindowBorderStyle()
 {
-	if (m_pKarinchanScenePlayer.get() == nullptr || !m_pKarinchanScenePlayer->HasScenarioData())return;
+	if (m_pKarinchanScenePlayer.get() == nullptr || !m_pKarinchanScenePlayer->hasScenarioData())return;
 
 	RECT rect;
 	::GetWindowRect(m_hWnd, &rect);
@@ -620,7 +626,7 @@ void CMainWindow::ResizeWindow()
 {
 	unsigned int uiWidth = 0;
 	unsigned int uiHeight = 0;
-	m_pKarinchanScenePlayer->GetStillImageSize(&uiWidth, &uiHeight);
+	m_pKarinchanScenePlayer->getStillImageSize(&uiWidth, &uiHeight);
 
 	RECT rect;
 	::GetWindowRect(m_hWnd, &rect);

@@ -7,7 +7,7 @@
 
 CDxLibClock::CDxLibClock()
 {
-	Restart();
+	restart();
 }
 
 CDxLibClock::~CDxLibClock()
@@ -15,19 +15,19 @@ CDxLibClock::~CDxLibClock()
 
 }
 
-float CDxLibClock::GetElapsedTime()
+float CDxLibClock::getElapsedTime()
 {
 	unsigned long long nFrequency = DxLib::GetSysPerformanceFrequency();
-	unsigned long long nNow = GetNowCounter();
+	unsigned long long nNow = getNowCounter();
 	return static_cast<float>(nNow - m_nLastCounter) / nFrequency;
 }
 
-void CDxLibClock::Restart()
+void CDxLibClock::restart()
 {
-	m_nLastCounter = GetNowCounter();
+	m_nLastCounter = getNowCounter();
 }
 
-unsigned long long CDxLibClock::GetNowCounter()
+unsigned long long CDxLibClock::getNowCounter()
 {
 	return DxLib::GetNowSysPerformanceCount();
 }

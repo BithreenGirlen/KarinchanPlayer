@@ -7,12 +7,12 @@ public:
 	CDxLibClock();
 	~CDxLibClock();
 
-	float GetElapsedTime();
-	void Restart();
+	float getElapsedTime();
+	void restart();
 private:
-	unsigned long long m_nLastCounter{};
+	unsigned long long m_nLastCounter = 0;
 
-	unsigned long long GetNowCounter();
+	unsigned long long getNowCounter();
 };
 
 #endif // !DXLIB_CLOCK_H_

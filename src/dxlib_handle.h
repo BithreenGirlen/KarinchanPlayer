@@ -12,11 +12,11 @@ public:
 	};
 	~DxLibHandle()
 	{
-		Reset();
+		reset();
 	}
 
-	int Get()const { return m_iHandle; }
-	void Reset()
+	int get()const { return m_iHandle; }
+	void reset()
 	{
 		if (m_iHandle != -1 && pHandleDeleter != nullptr)
 		{
@@ -24,7 +24,7 @@ public:
 			m_iHandle = -1;
 		}
 	}
-	bool Empty() const { return m_iHandle == -1; }
+	bool empty() const { return m_iHandle == -1; }
 
 	DxLibHandle(DxLibHandle&& other) noexcept
 		: m_iHandle(other.m_iHandle)
@@ -36,7 +36,7 @@ public:
 	{
 		if (this != &other)
 		{
-			Reset();
+			reset();
 
 			m_iHandle = other.m_iHandle;
 			other.m_iHandle = -1;
